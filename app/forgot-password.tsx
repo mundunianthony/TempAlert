@@ -31,7 +31,9 @@ export default function ForgotPasswordScreen() {
         className="w-full bg-blue-600 p-3 rounded"
         onPress={handleForgotPassword}
       >
-        <Text className="text-white text-center font-semibold">Reset Password</Text>
+        <Text className="text-white text-center font-semibold">
+          Reset Password
+        </Text>
       </TouchableOpacity>
     </View>
   );
