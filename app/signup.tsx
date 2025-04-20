@@ -9,8 +9,10 @@ import {
   import { useState } from "react";
   import { Link, useRouter } from "expo-router";
   import { useAuth } from "@/src/context/AuthContext";
-  import { styled } from "nativewind";
+  import { styled } from "nativewind/native";
   import { Ionicons } from "@expo/vector-icons";
+ 
+
   
   const StyledView = styled(View);
   const StyledText = styled(Text);
@@ -38,9 +40,9 @@ import {
       try {
         setLoading(true);
         await register(email, password, firstName); // You can store full name if desired
-        router.replace("/dashboard");
+        router.replace("/"); // Replace "/dashboard" with a valid route
       } catch (err) {
-        Alert.alert("Signup Error", err.message);
+        Alert.alert("Signup Error", err instanceof Error ? err.message : "An unknown error occurred");
       } finally {
         setLoading(false);
       }
@@ -120,4 +122,3 @@ import {
       </StyledView>
     );
   }
-  
