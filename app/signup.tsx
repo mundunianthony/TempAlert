@@ -107,7 +107,7 @@ const SignUpScreen = () => {
       {/* Switch to Login */}
       <Text className="text-gray-500">
         Already have an account?{" "}
-        <Link href="/login">
+        <Link href="../login">
           <Text className="text-blue-500 font-semibold">Login</Text>
         </Link>
       </Text>
