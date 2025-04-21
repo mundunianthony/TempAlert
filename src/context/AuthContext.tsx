@@ -17,6 +17,7 @@ interface AuthContextProps {
     password: string,
     firstName: string
   ) => Promise<void>;
+  lastName?: string; // Add lastName as an optional property
 }
 
 const AuthContext = createContext<AuthContextProps>({
@@ -31,6 +32,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const lastName = user?.displayName?.split(" ")[1] || ""; // Extract last name
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -59,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, register }}>
+    <AuthContext.Provider value={{ user, loading, logout, register, lastName }}>
       {children}
     </AuthContext.Provider>
   );
