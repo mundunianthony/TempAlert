@@ -1,11 +1,4 @@
 import React, { useEffect, useState } from "react";
-
-// Define the User type
-interface User {
-  id: string;
-  email: string;
-  displayName?: string;
-}
 import {
   View,
   Text,
@@ -17,13 +10,14 @@ import { useAuth } from "@/src/context/AuthContext";
 import { useRouter } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
 import { Feather, FontAwesome } from "@expo/vector-icons";
+import { collection, getDocs, onSnapshot } from "firebase/firestore";
 import { database } from "@/src/lib/firebase";
-import { ref, onValue } from "firebase/database";
 
-export interface AuthContextProps {
-  user: User | null;
-  lastName?: string; // Add lastName as an optional property
-  logout: () => void;
+// Types
+interface User {
+  id: string;
+  email: string;
+  displayName?: string;
 }
 
 interface Storeroom {
@@ -48,7 +42,6 @@ export default function Dashboard() {
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [chartData, setChartData] = useState<number[]>([]);
-
   const screenWidth = Dimensions.get("window").width;
 
   useEffect(() => {
@@ -57,37 +50,32 @@ export default function Dashboard() {
       return;
     }
 
-    // Fetch storerooms
-    const storeroomsRef = ref(database, "storerooms");
-    const unsubscribeStorerooms = onValue(storeroomsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const storeroomsArray = Object.values(data) as Storeroom[];
-        setStorerooms(storeroomsArray);
+    // Listen to storerooms collection
+    const unsubscribeStorerooms = onSnapshot(
+      collection(database, "storerooms"),
+      (snapshot) => {
+        const rooms = snapshot.docs.map((doc) => doc.data() as Storeroom);
+        setStorerooms(rooms);
       }
-    });
+    );
 
-    // Fetch alerts
-    const alertsRef = ref(database, "alerts");
-    const unsubscribeAlerts = onValue(alertsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const alertsArray = Object.values(data) as Alert[];
-        setAlerts(alertsArray);
+    // Listen to alerts collection
+    const unsubscribeAlerts = onSnapshot(
+      collection(database, "alerts"),
+      (snapshot) => {
+        const alertList = snapshot.docs.map((doc) => doc.data() as Alert);
+        setAlerts(alertList);
       }
-    });
+    );
 
-    // Fetch temperature history for graph (using Storeroom 1 as example)
-    const tempRef = ref(database, "temperatureHistory/storeroom1");
-    const unsubscribeTemp = onValue(tempRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const tempArray = (data as TemperatureDataPoint[]).map(
-          (point) => point.value
-        );
-        setChartData(tempArray);
+    // Listen to temperatureHistory for storeroom1
+    const unsubscribeTemp = onSnapshot(
+      collection(database, "temperatureHistory/storeroom1/points"),
+      (snapshot) => {
+        const temps = snapshot.docs.map((doc) => doc.data() as TemperatureDataPoint);
+        setChartData(temps.map((point) => point.value));
       }
-    });
+    );
 
     return () => {
       unsubscribeStorerooms();
