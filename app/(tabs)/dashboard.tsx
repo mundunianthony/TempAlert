@@ -63,7 +63,9 @@ export default function Dashboard() {
     const unsubscribeTemp = onSnapshot(
       collection(database, "temperatureHistory/storeroom1/points"),
       (snapshot) => {
-        const temps = snapshot.docs.map((doc) => doc.data() as TemperatureDataPoint);
+        const temps = snapshot.docs.map(
+          (doc) => doc.data() as TemperatureDataPoint
+        );
         setChartData(temps.map((point) => point.value));
       }
     );
@@ -77,10 +79,14 @@ export default function Dashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Normal": return "text-green-600";
-      case "Warning": return "text-yellow-600";
-      case "Critical": return "text-red-600";
-      default: return "text-gray-600";
+      case "Normal":
+        return "text-green-600";
+      case "Warning":
+        return "text-yellow-600";
+      case "Critical":
+        return "text-red-600";
+      default:
+        return "text-gray-600";
     }
   };
 
@@ -123,8 +129,14 @@ export default function Dashboard() {
               key={index}
               className="flex-row justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
             >
-              <Text className="text-base font-medium text-black">{room.name}</Text>
-              <Text className={`text-base font-semibold ${getStatusColor(room.status)}`}>
+              <Text className="text-base font-medium text-black">
+                {room.name}
+              </Text>
+              <Text
+                className={`text-base font-semibold ${getStatusColor(
+                  room.status
+                )}`}
+              >
                 {room.status} {room.temperature}°
               </Text>
             </View>
@@ -133,7 +145,9 @@ export default function Dashboard() {
 
         {/* Graph Widget */}
         <View className="bg-white rounded-xl p-4 mb-6 border border-gray-300">
-          <Text className="text-lg font-semibold mb-3 text-black">Graph Widget</Text>
+          <Text className="text-lg font-semibold mb-3 text-black">
+            Graph Widget
+          </Text>
           {chartData.length > 0 ? (
             <LineChart
               data={{
@@ -172,7 +186,9 @@ export default function Dashboard() {
               className="flex-row justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
             >
               <Text className="text-base text-black">{alert.message}</Text>
-              <Text className="text-sm text-gray-500">{timeAgo(alert.timestamp)}</Text>
+              <Text className="text-sm text-gray-500">
+                {timeAgo(alert.timestamp)}
+              </Text>
             </View>
           ))}
         </View>
