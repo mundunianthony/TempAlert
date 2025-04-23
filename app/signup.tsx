@@ -11,7 +11,7 @@ import { Link, useRouter } from "expo-router";
 import { useAuth } from "@/src/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 
-const SignUpScreen = () => {
+export default function SignUpScreen() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -30,7 +30,7 @@ const SignUpScreen = () => {
 
     try {
       setLoading(true);
-      await register(firstName,lastName,email, password);
+      await register(firstName, lastName, email, password);
       router.replace("/");
     } catch (err) {
       Alert.alert(
@@ -113,6 +113,4 @@ const SignUpScreen = () => {
       </Text>
     </View>
   );
-};
-
-export default SignUpScreen;
+}
