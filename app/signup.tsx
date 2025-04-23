@@ -30,7 +30,7 @@ const SignUpScreen = () => {
 
     try {
       setLoading(true);
-      await register(email, password, firstName);
+      await register(firstName,lastName,email, password);
       router.replace("/");
     } catch (err) {
       Alert.alert(
