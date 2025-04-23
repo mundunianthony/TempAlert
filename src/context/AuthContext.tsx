@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
 
 interface AuthContextProps {
   user: FirebaseAuthTypes.User | null;
@@ -22,13 +22,15 @@ const AuthContext = createContext<AuthContextProps>({
   lastName: null,
 });
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastName, setLastName] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged(u => {
+    const unsubscribe = auth().onAuthStateChanged((u) => {
       setUser(u);
       setLastName(u?.displayName?.split(" ").slice(-1).join(" ") || null);
       setLoading(false);
@@ -46,7 +48,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     firstName: string,
     lastName: string
   ) => {
-    const userCredential = await auth().createUserWithEmailAndPassword(email, password);
+    const userCredential = await auth().createUserWithEmailAndPassword(
+      email,
+      password
+    );
     await userCredential.user.updateProfile({
       displayName: `${firstName} ${lastName}`,
     });
