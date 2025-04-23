@@ -11,6 +11,7 @@ interface AuthContextProps {
     firstName: string,
     lastName: string
   ) => Promise<void>;
+  lastName: string | null;
 }
 
 const AuthContext = createContext<AuthContextProps>({
@@ -18,15 +19,18 @@ const AuthContext = createContext<AuthContextProps>({
   loading: true,
   logout: async () => {},
   register: async () => {},
+  lastName: null,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastName, setLastName] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = auth().onAuthStateChanged(u => {
       setUser(u);
+      setLastName(u?.displayName?.split(" ").slice(-1).join(" ") || null);
       setLoading(false);
     });
     return unsubscribe;
@@ -49,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, register }}>
+    <AuthContext.Provider value={{ user, loading, logout, register, lastName }}>
       {children}
     </AuthContext.Provider>
   );

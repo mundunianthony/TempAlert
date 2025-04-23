@@ -9,16 +9,10 @@ import {
 import { useAuth } from "@/src/context/AuthContext";
 import { useRouter } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
-import { Feather, FontAwesome } from "@expo/vector-icons";
-import { collection, getDocs, onSnapshot } from "firebase/firestore";
-import { database } from "@/src/lib/firebase";
+import { Feather, FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import { getFirestore, collection, onSnapshot } from "firebase/firestore";
 
-// Types
-interface User {
-  id: string;
-  email: string;
-  displayName?: string;
-}
+const database = getFirestore();
 
 interface Storeroom {
   name: string;
@@ -50,7 +44,6 @@ export default function Dashboard() {
       return;
     }
 
-    // Listen to storerooms collection
     const unsubscribeStorerooms = onSnapshot(
       collection(database, "storerooms"),
       (snapshot) => {
@@ -59,7 +52,6 @@ export default function Dashboard() {
       }
     );
 
-    // Listen to alerts collection
     const unsubscribeAlerts = onSnapshot(
       collection(database, "alerts"),
       (snapshot) => {
@@ -68,7 +60,6 @@ export default function Dashboard() {
       }
     );
 
-    // Listen to temperatureHistory for storeroom1
     const unsubscribeTemp = onSnapshot(
       collection(database, "temperatureHistory/storeroom1/points"),
       (snapshot) => {
@@ -86,21 +77,17 @@ export default function Dashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Normal":
-        return "text-green-600";
-      case "Warning":
-        return "text-yellow-600";
-      case "Critical":
-        return "text-red-600";
-      default:
-        return "text-gray-600";
+      case "Normal": return "text-green-600";
+      case "Warning": return "text-yellow-600";
+      case "Critical": return "text-red-600";
+      default: return "text-gray-600";
     }
   };
 
   const timeAgo = (timestamp: string) => {
     const now = new Date();
     const alertTime = new Date(timestamp);
-    const diff = Math.floor((now.getTime() - alertTime.getTime()) / 1000 / 60);
+    const diff = Math.floor((now.getTime() - alertTime.getTime()) / 60000);
     if (diff < 60) return `${diff}m ago`;
     return `${Math.floor(diff / 60)}h ago`;
   };
@@ -117,10 +104,13 @@ export default function Dashboard() {
     <View className="flex-1 bg-gray-100">
       <ScrollView className="flex-1 px-5 pt-10">
         {/* Welcome */}
-        <View className="mb-6">
+        <View className="mb-6 flex-row justify-between items-center">
           <Text className="text-3xl font-bold text-black">
-            Hello, {lastName || "User"}...
+            Hello, {lastName || user.displayName || "User"} 👋
           </Text>
+          <TouchableOpacity onPress={logout}>
+            <MaterialIcons name="logout" size={24} color="#000" />
+          </TouchableOpacity>
         </View>
 
         {/* Storeroom Overview */}
@@ -133,14 +123,8 @@ export default function Dashboard() {
               key={index}
               className="flex-row justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
             >
-              <Text className="text-base font-medium text-black">
-                {room.name}
-              </Text>
-              <Text
-                className={`text-base font-semibold ${getStatusColor(
-                  room.status
-                )}`}
-              >
+              <Text className="text-base font-medium text-black">{room.name}</Text>
+              <Text className={`text-base font-semibold ${getStatusColor(room.status)}`}>
                 {room.status} {room.temperature}°
               </Text>
             </View>
@@ -149,9 +133,7 @@ export default function Dashboard() {
 
         {/* Graph Widget */}
         <View className="bg-white rounded-xl p-4 mb-6 border border-gray-300">
-          <Text className="text-lg font-semibold mb-3 text-black">
-            Graph Widget
-          </Text>
+          <Text className="text-lg font-semibold mb-3 text-black">Graph Widget</Text>
           {chartData.length > 0 ? (
             <LineChart
               data={{
@@ -161,9 +143,9 @@ export default function Dashboard() {
               width={screenWidth - 40}
               height={150}
               chartConfig={{
-                backgroundColor: "#ffffff",
-                backgroundGradientFrom: "#ffffff",
-                backgroundGradientTo: "#ffffff",
+                backgroundColor: "#fff",
+                backgroundGradientFrom: "#fff",
+                backgroundGradientTo: "#fff",
                 decimalPlaces: 0,
                 color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
                 labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
@@ -190,9 +172,7 @@ export default function Dashboard() {
               className="flex-row justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
             >
               <Text className="text-base text-black">{alert.message}</Text>
-              <Text className="text-sm text-gray-500">
-                {timeAgo(alert.timestamp)}
-              </Text>
+              <Text className="text-sm text-gray-500">{timeAgo(alert.timestamp)}</Text>
             </View>
           ))}
         </View>
