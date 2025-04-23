@@ -1,23 +1,16 @@
-// src/context/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
-import {
-  User,
-  onAuthStateChanged,
-  signOut,
-  createUserWithEmailAndPassword,
-} from "firebase/auth";
-import { auth } from "../lib/firebase";
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
 interface AuthContextProps {
-  user: User | null;
+  user: FirebaseAuthTypes.User | null;
   loading: boolean;
   logout: () => Promise<void>;
   register: (
     email: string,
     password: string,
-    firstName: string
+    firstName: string,
+    lastName: string
   ) => Promise<void>;
-  lastName?: string; // Add lastName as an optional property
 }
 
 const AuthContext = createContext<AuthContextProps>({
@@ -27,42 +20,36 @@ const AuthContext = createContext<AuthContextProps>({
   register: async () => {},
 });
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const lastName = user?.displayName?.split(" ")[1] || ""; // Extract last name
-
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = auth().onAuthStateChanged(u => {
+      setUser(u);
       setLoading(false);
     });
     return unsubscribe;
   }, []);
 
   const logout = async () => {
-    await signOut(auth);
+    await auth().signOut();
   };
 
   const register = async (
     email: string,
     password: string,
-    firstName: string
+    firstName: string,
+    lastName: string
   ) => {
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    // Optionally, update the user's profile with the first name
-    // await updateProfile(userCredential.user, { displayName: firstName });
+    const userCredential = await auth().createUserWithEmailAndPassword(email, password);
+    await userCredential.user.updateProfile({
+      displayName: `${firstName} ${lastName}`,
+    });
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, register, lastName }}>
+    <AuthContext.Provider value={{ user, loading, logout, register }}>
       {children}
     </AuthContext.Provider>
   );
