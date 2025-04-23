@@ -1,9 +1,11 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore"; // Using Firestore
+// src/lib/firebase.ts
 
-// Your web app's Firebase configuration
+import { getApps, initializeApp } from '@react-native-firebase/app';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+
+// Your Firebase “web” config; you only need this to register your app.
+// RNFirebase reads all other settings from native config files automatically.
 const firebaseConfig = {
   apiKey: "AIzaSyCyflZ6cKrDa2SmHMz5es3Oxn62u3fJQtI",
   authDomain: "tempalert-7abb2.firebaseapp.com",
@@ -13,8 +15,10 @@ const firebaseConfig = {
   appId: "1:952450715967:web:558fc36f4eefb7da2ac38a",
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const database = getFirestore(app);
-export { app, auth, database }; 
+// Prevent re-initializing if hot reloading
+if (!getApps().length) {
+  initializeApp(firebaseConfig);
+}
+
+// Export the “auth” and “db” instances for the rest of your app
+export { auth, firestore as database };
