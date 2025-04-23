@@ -1,10 +1,8 @@
-// app/login.tsx
-import { useState } from "react";
+import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../src/lib/firebase";
+import auth from '@react-native-firebase/auth';
 import { useRouter } from "expo-router";
-import { useAuth } from "../src/context/AuthContext";
+import { useAuth } from "@/src/context/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,8 +12,8 @@ export default function Login() {
 
   const handleLogin = async () => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.replace("/dashboard"); // Navigate to the dashboard
+      await auth().signInWithEmailAndPassword(email, password);
+      router.replace("/dashboard");
     } catch (error: any) {
       alert(error.message);
     }
@@ -29,6 +27,8 @@ export default function Login() {
         className="w-full border rounded p-3 mb-3"
         value={email}
         onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
       />
       <TextInput
         placeholder="Password"
@@ -37,7 +37,7 @@ export default function Login() {
         value={password}
         onChangeText={setPassword}
       />
-      <TouchableOpacity className="mb-3" onPress={() => router.push("/forgot-password")}>
+      <TouchableOpacity className="mb-3" onPress={() => router.push("/forgot-password")}>  
         <Text className="text-blue-600 text-sm">Forgot Password?</Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -47,8 +47,10 @@ export default function Login() {
         <Text className="text-white text-center font-semibold">Login</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity className="mt-4" onPress={() => router.push("/signup")}>
-        <Text className="text-gray-700">Don't have an account? <Text className="text-blue-600">Sign up</Text></Text>
+      <TouchableOpacity className="mt-4" onPress={() => router.push("/signup")}>  
+        <Text className="text-gray-700">
+          Don't have an account? <Text className="text-blue-600">Sign up</Text>
+        </Text>
       </TouchableOpacity>
     </View>
   );
