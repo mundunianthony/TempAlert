@@ -1,8 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
+import { authInstance } from "@/src/lib/firebase"; // your initialized firebase auth
+import {
+  User,
+  onAuthStateChanged,
+  signOut,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
 
 interface AuthContextProps {
-  user: FirebaseAuthTypes.User | null;
+  user: User | null;
   loading: boolean;
   logout: () => Promise<void>;
   register: (
@@ -25,21 +32,22 @@ const AuthContext = createContext<AuthContextProps>({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastName, setLastName] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged((u) => {
+    const unsubscribe = onAuthStateChanged(authInstance, (u) => {
       setUser(u);
       setLastName(u?.displayName?.split(" ").slice(-1).join(" ") || null);
       setLoading(false);
     });
+
     return unsubscribe;
   }, []);
 
   const logout = async () => {
-    await auth().signOut();
+    await signOut(authInstance);
   };
 
   const register = async (
@@ -48,11 +56,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     firstName: string,
     lastName: string
   ) => {
-    const userCredential = await auth().createUserWithEmailAndPassword(
+    const userCredential = await createUserWithEmailAndPassword(
+      authInstance,
       email,
       password
     );
-    await userCredential.user.updateProfile({
+    await updateProfile(userCredential.user, {
       displayName: `${firstName} ${lastName}`,
     });
   };
