@@ -40,7 +40,7 @@ export default function RootLayout() {
           <Stack.Screen name="login" />
           <Stack.Screen name="signup" />
           <Stack.Screen name="forgot-password" />
-          <Stack.Screen name="dashboard" />
+          <Stack.Screen name="(tabs)/dashboard" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="+not-found" />
         </Stack>
