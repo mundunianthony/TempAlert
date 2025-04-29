@@ -23,12 +23,21 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch((error) =>
+        console.warn("Failed to hide splash screen:", error)
+      );
     }
+
+    // Optional: fallback timeout to avoid infinite splash screen
+    const timeout = setTimeout(() => {
+      SplashScreen.hideAsync().catch(console.warn);
+    }, 5000);
+
+    return () => clearTimeout(timeout);
   }, [loaded]);
 
   if (!loaded) {
-    return null;
+    return null; // still loading
   }
 
   return (
