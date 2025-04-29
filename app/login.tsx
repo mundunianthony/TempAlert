@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import auth from "@react-native-firebase/auth";
+import { authInstance } from "@/src/lib/firebase"; // Use Firestore auth instance
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "expo-router";
 import { useAuth } from "../src/context/AuthContext";
 
@@ -28,7 +29,7 @@ export default function Login() {
     setError("");
 
     try {
-      await auth().signInWithEmailAndPassword(email, password);
+      await signInWithEmailAndPassword(authInstance, email, password); // Use Firestore auth
       router.replace("/dashboard");
     } catch (err: any) {
       setError(err.message);
