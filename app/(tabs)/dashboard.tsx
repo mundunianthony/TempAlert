@@ -10,7 +10,9 @@ import { useAuth } from "@/src/context/AuthContext";
 import { useRouter } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
 import { Feather, FontAwesome, MaterialIcons } from "@expo/vector-icons";
-import { database } from "@/src/lib/firebase";
+import { getFirestore } from "@/src/lib/firebase";
+
+const database = getFirestore();
 import { collection, onSnapshot } from "firebase/firestore";
 
 interface Storeroom {
