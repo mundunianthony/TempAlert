@@ -30,7 +30,7 @@ export default function Login() {
 
     try {
       await signInWithEmailAndPassword(authInstance, email, password); // Use Firestore auth
-      router.replace("/dashboard");
+      router.replace("/(tabs)/dashboard");
     } catch (err: any) {
       setError(err.message);
     } finally {
