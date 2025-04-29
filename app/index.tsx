@@ -1,9 +1,6 @@
-import { View, Text } from "react-native";
+// app/index.tsx
+import { Redirect } from 'expo-router';
 
-export default function HomeScreen() {
-  return (
-    <View className="flex-1 justify-center items-center bg-white">
-      <Text className="text-3xl font-bold">Welcome to TempAlert!</Text>
-    </View>
-  );
+export default function Index() {
+  return <Redirect href="/login" />;
 }
