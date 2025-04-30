@@ -127,10 +127,7 @@ export default function Dashboard() {
           {storerooms.map((room, index) => (
             <View
               key={index}
-              style={[
-                styles.row,
-                index < storerooms.length - 1 && styles.divider,
-              ]}
+              style={[styles.row, index < storerooms.length - 1 && styles.divider]}
             >
               <Text style={styles.roomName}>{room.name}</Text>
               <Text style={[styles.roomStatus, getStatusColor(room.status)]}>
@@ -193,17 +190,17 @@ export default function Dashboard() {
 
       {/* Bottom Nav */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => router.push("/dashboard")}>
-          <FontAwesome name="home" size={24} color="#000" />
+        <TouchableOpacity style={styles.navButton} onPress={() => router.push("/dashboard")}>
+          <FontAwesome name="home" size={24} color="#007bff" />
         </TouchableOpacity>
-        <TouchableOpacity>
-          <Feather name="clock" size={24} color="#000" />
+        <TouchableOpacity style={styles.navButton}>
+          <Feather name="clock" size={24} color="#007bff" />
         </TouchableOpacity>
-        <TouchableOpacity>
-          <Feather name="bell" size={24} color="#000" />
+        <TouchableOpacity style={styles.navButton}>
+          <Feather name="bell" size={24} color="#007bff" />
         </TouchableOpacity>
-        <TouchableOpacity>
-          <Feather name="settings" size={24} color="#000" />
+        <TouchableOpacity style={styles.navButton}>
+          <Feather name="settings" size={24} color="#007bff" />
         </TouchableOpacity>
       </View>
     </View>
@@ -290,6 +287,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
+  },
+  navButton: {
+    padding: 8,
   },
   centeredView: {
     flex: 1,
