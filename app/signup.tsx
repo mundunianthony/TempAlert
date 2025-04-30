@@ -72,7 +72,7 @@ export default function SignUpScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.container}
       >
-        <Text style={styles.title}>TempAlert</Text>
+        <Text style={styles.title}>Create Account</Text>
 
         <TextInput
           placeholder="First Name"
