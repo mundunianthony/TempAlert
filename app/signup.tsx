@@ -166,9 +166,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.85)",
+    backgroundColor: "rgba(11, 9, 9, 0.5)", // Reduced from 0.85 to 0.5
     paddingHorizontal: 24,
-  },
+  },  
   title: {
     fontSize: 30,
     fontWeight: "bold",
