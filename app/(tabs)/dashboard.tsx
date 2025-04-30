@@ -5,15 +5,16 @@ import {
   Dimensions,
   ScrollView,
   TouchableOpacity,
+  StyleSheet,
 } from "react-native";
 import { useAuth } from "@/src/context/AuthContext";
 import { useRouter } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
 import { Feather, FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { getFirestore } from "@/src/lib/firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 
 const database = getFirestore();
-import { collection, onSnapshot } from "firebase/firestore";
 
 interface Storeroom {
   name: string;
@@ -81,13 +82,13 @@ export default function Dashboard() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Normal":
-        return "text-green-600";
+        return styles.textGreen;
       case "Warning":
-        return "text-yellow-600";
+        return styles.textYellow;
       case "Critical":
-        return "text-red-600";
+        return styles.textRed;
       default:
-        return "text-gray-600";
+        return styles.textGray;
     }
   };
 
@@ -101,18 +102,18 @@ export default function Dashboard() {
 
   if (!user) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-lg">Loading...</Text>
+      <View style={styles.centeredView}>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-100">
-      <ScrollView className="flex-1 px-5 pt-10">
+    <View style={styles.container}>
+      <ScrollView style={styles.scroll}>
         {/* Welcome */}
-        <View className="mb-6 flex-row justify-between items-center">
-          <Text className="text-3xl font-bold text-black">
+        <View style={styles.header}>
+          <Text style={styles.greeting}>
             Hello, {lastName || user.displayName || "User"} 👋
           </Text>
           <TouchableOpacity onPress={logout}>
@@ -121,23 +122,18 @@ export default function Dashboard() {
         </View>
 
         {/* Storeroom Overview */}
-        <View className="bg-white rounded-xl p-4 mb-6 border border-gray-300">
-          <Text className="text-lg font-semibold mb-3 text-black">
-            Storeroom Overview
-          </Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Storeroom Overview</Text>
           {storerooms.map((room, index) => (
             <View
               key={index}
-              className="flex-row justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
+              style={[
+                styles.row,
+                index < storerooms.length - 1 && styles.divider,
+              ]}
             >
-              <Text className="text-base font-medium text-black">
-                {room.name}
-              </Text>
-              <Text
-                className={`text-base font-semibold ${getStatusColor(
-                  room.status
-                )}`}
-              >
+              <Text style={styles.roomName}>{room.name}</Text>
+              <Text style={[styles.roomStatus, getStatusColor(room.status)]}>
                 {room.status} {room.temperature}°
               </Text>
             </View>
@@ -145,10 +141,8 @@ export default function Dashboard() {
         </View>
 
         {/* Graph Widget */}
-        <View className="bg-white rounded-xl p-4 mb-6 border border-gray-300">
-          <Text className="text-lg font-semibold mb-3 text-black">
-            Graph Widget
-          </Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Graph Widget</Text>
           {chartData.length > 0 ? (
             <LineChart
               data={{
@@ -165,38 +159,40 @@ export default function Dashboard() {
                 color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
                 labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
                 style: { borderRadius: 16 },
-                propsForDots: { r: "6", strokeWidth: "2", stroke: "#000" },
+                propsForDots: {
+                  r: "6",
+                  strokeWidth: "2",
+                  stroke: "#000",
+                },
               }}
-              style={{ marginVertical: 8, borderRadius: 16 }}
+              style={styles.chart}
               withInnerLines={true}
               withOuterLines={false}
               withHorizontalLabels={false}
               withVerticalLabels={false}
             />
           ) : (
-            <Text className="text-gray-500">Loading graph...</Text>
+            <Text style={styles.loadingText}>Loading graph...</Text>
           )}
         </View>
 
         {/* Alerts Section */}
-        <View className="bg-white rounded-xl p-4 mb-20 border border-gray-300">
-          <Text className="text-lg font-semibold mb-3 text-black">Alerts</Text>
+        <View style={[styles.card, { marginBottom: 80 }]}>
+          <Text style={styles.cardTitle}>Alerts</Text>
           {alerts.map((alert, index) => (
             <View
               key={index}
-              className="flex-row justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
+              style={[styles.row, index < alerts.length - 1 && styles.divider]}
             >
-              <Text className="text-base text-black">{alert.message}</Text>
-              <Text className="text-sm text-gray-500">
-                {timeAgo(alert.timestamp)}
-              </Text>
+              <Text style={styles.alertMessage}>{alert.message}</Text>
+              <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
             </View>
           ))}
         </View>
       </ScrollView>
 
       {/* Bottom Nav */}
-      <View className="absolute bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 flex-row justify-around items-center">
+      <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => router.push("/dashboard")}>
           <FontAwesome name="home" size={24} color="#000" />
         </TouchableOpacity>
@@ -213,3 +209,91 @@ export default function Dashboard() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#f3f4f6" },
+  scroll: { flex: 1, paddingHorizontal: 20, paddingTop: 40 },
+  header: {
+    marginBottom: 24,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#000",
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 12,
+    color: "#000",
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  divider: {
+    borderBottomWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  roomName: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#000",
+  },
+  roomStatus: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  textGreen: { color: "#16a34a" },
+  textYellow: { color: "#ca8a04" },
+  textRed: { color: "#dc2626" },
+  textGray: { color: "#6b7280" },
+  alertMessage: {
+    fontSize: 16,
+    color: "#000",
+  },
+  alertTime: {
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#6b7280",
+    textAlign: "center",
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
+  bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 64,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderColor: "#e5e7eb",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
