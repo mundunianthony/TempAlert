@@ -6,11 +6,16 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  ImageBackground,
 } from "react-native";
 import { authInstance } from "@/src/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "expo-router";
 import { useAuth } from "../src/context/AuthContext";
+
+const backgroundImage = {
+  uri: "https://images.unsplash.com/photo-1744125235979-4286ddb612b5?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+};
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -41,82 +46,89 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back</Text>
+    <ImageBackground source={backgroundImage} style={styles.background}>
+      <View style={styles.overlay}>
+        <Text style={styles.title}>Welcome Back</Text>
 
-      {error ? (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
-      <TextInput
-        placeholder="Email"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        placeholderTextColor="#666"
-      />
-
-      <View style={styles.passwordContainer}>
         <TextInput
-          placeholder="Password"
-          style={styles.passwordInput}
-          secureTextEntry={!showPassword}
-          value={password}
-          onChangeText={setPassword}
-          placeholderTextColor="#666"
+          placeholder="Email"
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          placeholderTextColor="#ccc"
         />
-        <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)}>
-          <Text style={styles.togglePassword}>
-            {showPassword ? "Hide" : "Show"}
+
+        <View style={styles.passwordContainer}>
+          <TextInput
+            placeholder="Password"
+            style={styles.passwordInput}
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+            placeholderTextColor="#ccc"
+          />
+          <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)}>
+            <Text style={styles.togglePassword}>
+              {showPassword ? "Hide" : "Show"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => router.push("/forgot-password")}
+          style={styles.forgotPassword}
+        >
+          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleLogin}
+          style={[styles.button, loading && styles.buttonDisabled]}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push("/signup")} style={styles.signup}>
+          <Text style={styles.signupText}>
+            Don't have an account? <Text style={styles.signupLink}>Sign up</Text>
           </Text>
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity
-        onPress={() => router.push("/forgot-password")}
-        style={styles.forgotPassword}
-      >
-        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={handleLogin}
-        style={[styles.button, loading && styles.buttonDisabled]}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Login</Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.push("/signup")} style={styles.signup}>
-        <Text style={styles.signupText}>
-          Don't have an account? <Text style={styles.signupLink}>Sign up</Text>
-        </Text>
-      </TouchableOpacity>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
+    resizeMode: "cover",
+    justifyContent: "center",
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
-    backgroundColor: "#fff",
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 24,
-    color: "#000",
+    color: "#fff",
   },
   errorBox: {
     width: "100%",
@@ -137,7 +149,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
-    color: "#000",
+    color: "#fff",
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
   passwordContainer: {
     flexDirection: "row",
@@ -148,14 +161,15 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingHorizontal: 12,
     marginBottom: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
   passwordInput: {
     flex: 1,
     paddingVertical: 12,
-    color: "#000",
+    color: "#fff",
   },
   togglePassword: {
-    color: "#2563eb",
+    color: "#93c5fd",
     fontWeight: "bold",
   },
   forgotPassword: {
@@ -163,7 +177,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   forgotPasswordText: {
-    color: "#2563eb",
+    color: "#93c5fd",
     fontSize: 14,
   },
   button: {
@@ -185,10 +199,10 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   signupText: {
-    color: "#374151",
+    color: "#ccc",
   },
   signupLink: {
-    color: "#2563eb",
+    color: "#fff",
     fontWeight: "bold",
   },
 });
