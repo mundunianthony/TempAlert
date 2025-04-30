@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Alert,
   Pressable,
+  StyleSheet,
 } from "react-native";
 import { useState } from "react";
 import { Link, useRouter } from "expo-router";
@@ -43,46 +44,42 @@ export default function SignUpScreen() {
   };
 
   return (
-    <View className="flex-1 justify-center items-center bg-white px-6">
-      <Text className="text-3xl font-bold text-blue-500 mb-6">TempAlert</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>TempAlert</Text>
 
-      {/* First Name */}
       <TextInput
         placeholder="First Name"
-        className="border border-gray-300 rounded-lg px-4 py-2 w-full mb-4"
+        style={styles.input}
         value={firstName}
         onChangeText={setFirstName}
       />
 
-      {/* Last Name */}
       <TextInput
         placeholder="Last Name"
-        className="border border-gray-300 rounded-lg px-4 py-2 w-full mb-4"
+        style={styles.input}
         value={lastName}
         onChangeText={setLastName}
       />
 
-      {/* Email */}
       <TextInput
         placeholder="Email"
-        className="border border-gray-300 rounded-lg px-4 py-2 w-full mb-4"
+        style={styles.input}
         keyboardType="email-address"
         autoCapitalize="none"
         value={email}
         onChangeText={setEmail}
       />
 
-      {/* Password + Eye Toggle */}
-      <View className="w-full mb-6 relative">
+      <View style={styles.passwordWrapper}>
         <TextInput
           placeholder="Password"
-          className="border border-gray-300 rounded-lg px-4 py-2 pr-10"
+          style={[styles.input, styles.passwordInput]}
           secureTextEntry={!showPassword}
           value={password}
           onChangeText={setPassword}
         />
         <Pressable
-          className="absolute right-3 top-3"
+          style={styles.eyeIcon}
           onPress={() => setShowPassword(!showPassword)}
         >
           <Ionicons
@@ -93,24 +90,80 @@ export default function SignUpScreen() {
         </Pressable>
       </View>
 
-      {/* Sign Up Button */}
       <TouchableOpacity
-        className="bg-blue-500 rounded-lg px-4 py-2 w-full mb-4"
+        style={styles.button}
         onPress={handleSignUp}
         disabled={loading}
       >
-        <Text className="text-white text-center font-semibold">
+        <Text style={styles.buttonText}>
           {loading ? "Creating Account..." : "Sign Up"}
         </Text>
       </TouchableOpacity>
 
-      {/* Switch to Login */}
-      <Text className="text-gray-500">
+      <Text style={styles.loginText}>
         Already have an account?{" "}
         <Link href="../login">
-          <Text className="text-blue-500 font-semibold">Login</Text>
+          <Text style={styles.loginLink}>Login</Text>
         </Link>
       </Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 24,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: "bold",
+    color: "#3b82f6", // Tailwind's blue-500
+    marginBottom: 24,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#d1d5db", // Tailwind's gray-300
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    width: "100%",
+    marginBottom: 16,
+  },
+  passwordWrapper: {
+    width: "100%",
+    marginBottom: 24,
+    position: "relative",
+  },
+  passwordInput: {
+    paddingRight: 40,
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: 12,
+    top: 12,
+  },
+  button: {
+    backgroundColor: "#3b82f6",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    width: "100%",
+    marginBottom: 16,
+  },
+  buttonText: {
+    color: "#ffffff",
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  loginText: {
+    color: "#6b7280", // Tailwind's gray-500
+  },
+  loginLink: {
+    color: "#3b82f6",
+    fontWeight: "600",
+  },
+});
