@@ -5,8 +5,9 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  StyleSheet,
 } from "react-native";
-import { authInstance } from "@/src/lib/firebase"; // Use Firestore auth instance
+import { authInstance } from "@/src/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "expo-router";
 import { useAuth } from "../src/context/AuthContext";
@@ -14,6 +15,7 @@ import { useAuth } from "../src/context/AuthContext";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -29,7 +31,7 @@ export default function Login() {
     setError("");
 
     try {
-      await signInWithEmailAndPassword(authInstance, email, password); // Use Firestore auth
+      await signInWithEmailAndPassword(authInstance, email, password);
       router.replace("/(tabs)/dashboard");
     } catch (err: any) {
       setError(err.message);
@@ -39,57 +41,154 @@ export default function Login() {
   };
 
   return (
-    <View className="flex-1 justify-center items-center px-6 bg-white">
-      <Text className="text-3xl font-bold mb-6 text-black">Welcome Back</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>Welcome Back</Text>
 
       {error ? (
-        <View className="w-full bg-red-100 border border-red-400 rounded p-3 mb-4">
-          <Text className="text-red-700">{error}</Text>
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
 
       <TextInput
         placeholder="Email"
-        className="w-full border border-gray-300 rounded p-3 mb-3 text-black"
+        style={styles.input}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
-      />
-      <TextInput
-        placeholder="Password"
-        className="w-full border border-gray-300 rounded p-3 mb-3 text-black"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
+        placeholderTextColor="#666"
       />
 
+      <View style={styles.passwordContainer}>
+        <TextInput
+          placeholder="Password"
+          style={styles.passwordInput}
+          secureTextEntry={!showPassword}
+          value={password}
+          onChangeText={setPassword}
+          placeholderTextColor="#666"
+        />
+        <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)}>
+          <Text style={styles.togglePassword}>
+            {showPassword ? "Hide" : "Show"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity
-        className="mb-3 self-end"
         onPress={() => router.push("/forgot-password")}
+        style={styles.forgotPassword}
       >
-        <Text className="text-blue-600 text-sm">Forgot Password?</Text>
+        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        className={`w-full p-3 rounded ${
-          loading ? "bg-blue-400" : "bg-blue-600"
-        }`}
         onPress={handleLogin}
+        style={[styles.button, loading && styles.buttonDisabled]}
         disabled={loading}
       >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text className="text-white text-center font-semibold">Login</Text>
+          <Text style={styles.buttonText}>Login</Text>
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity className="mt-6" onPress={() => router.push("/signup")}>
-        <Text className="text-gray-700">
-          Don't have an account? <Text className="text-blue-600">Sign up</Text>
+      <TouchableOpacity onPress={() => router.push("/signup")} style={styles.signup}>
+        <Text style={styles.signupText}>
+          Don't have an account? <Text style={styles.signupLink}>Sign up</Text>
         </Text>
       </TouchableOpacity>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    backgroundColor: "#fff",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 24,
+    color: "#000",
+  },
+  errorBox: {
+    width: "100%",
+    backgroundColor: "#fee2e2",
+    borderColor: "#f87171",
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: "#b91c1c",
+  },
+  input: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    color: "#000",
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    width: "100%",
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 12,
+    color: "#000",
+  },
+  togglePassword: {
+    color: "#2563eb",
+    fontWeight: "bold",
+  },
+  forgotPassword: {
+    alignSelf: "flex-end",
+    marginBottom: 12,
+  },
+  forgotPasswordText: {
+    color: "#2563eb",
+    fontSize: 14,
+  },
+  button: {
+    width: "100%",
+    backgroundColor: "#2563eb",
+    padding: 14,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  buttonDisabled: {
+    backgroundColor: "#93c5fd",
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  signup: {
+    marginTop: 24,
+  },
+  signupText: {
+    color: "#374151",
+  },
+  signupLink: {
+    color: "#2563eb",
+    fontWeight: "bold",
+  },
+});
