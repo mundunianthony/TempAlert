@@ -199,7 +199,7 @@ export default function Dashboard() {
         <TouchableOpacity style={styles.navButton}>
           <Feather name="bell" size={24} color="#007bff" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}>
+        <TouchableOpacity style={styles.navButton} onPress={() => router.push("/profile")}>
           <Feather name="settings" size={24} color="#007bff" />
         </TouchableOpacity>
       </View>
