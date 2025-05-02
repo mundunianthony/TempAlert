@@ -6,6 +6,7 @@ import {
   signOut,
   createUserWithEmailAndPassword,
   updateProfile,
+  reload,
 } from "firebase/auth";
 
 interface AuthContextProps {
@@ -19,6 +20,7 @@ interface AuthContextProps {
     lastName: string
   ) => Promise<void>;
   lastName: string | null;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps>({
@@ -27,6 +29,7 @@ const AuthContext = createContext<AuthContextProps>({
   logout: async () => {},
   register: async () => {},
   lastName: null,
+  refreshUser: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -66,8 +69,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
+  const refreshUser = async () => {
+    if (authInstance.currentUser) {
+      await reload(authInstance.currentUser);
+      setUser(authInstance.currentUser);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, logout, register, lastName }}>
+    <AuthContext.Provider
+      value={{ user, loading, logout, register, lastName, refreshUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

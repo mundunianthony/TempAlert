@@ -13,7 +13,7 @@ import { updatePassword, updateProfile, updateEmail } from "firebase/auth";
 import { auth } from "@/src/lib/firebase";
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth(); // Add refreshUser from AuthContext
 
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -28,6 +28,7 @@ export default function Profile() {
       // Update display name
       if (displayName && displayName !== user.displayName) {
         await updateProfile(user, { displayName });
+        await refreshUser(); // Refresh user data after updating display name
       }
 
       // Update email
