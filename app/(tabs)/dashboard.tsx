@@ -122,8 +122,8 @@ export default function Dashboard() {
             Hello, {lastName || user.displayName || "User"} 👋
           </Text>
           <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-            <MaterialIcons name="logout" size={24} color="#000" />
             <Text style={styles.logoutText}>Logout</Text>
+            <MaterialIcons name="logout" size={24} color="#000" />
           </TouchableOpacity>
         </View>
 
