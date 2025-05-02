@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [chartData, setChartData] = useState<number[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0); // Add refreshKey state
   const screenWidth = Dimensions.get("window").width;
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export default function Dashboard() {
       unsubscribeAlerts();
       unsubscribeTemp();
     };
-  }, [user, router]);
+  }, [user, router, refreshKey]); // Add refreshKey as a dependency
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -98,6 +99,10 @@ export default function Dashboard() {
     const diff = Math.floor((now.getTime() - alertTime.getTime()) / 60000);
     if (diff < 60) return `${diff}m ago`;
     return `${Math.floor(diff / 60)}h ago`;
+  };
+
+  const handleRefresh = () => {
+    setRefreshKey((prevKey) => prevKey + 1); // Increment refreshKey to trigger re-render
   };
 
   if (!user) {
@@ -190,7 +195,7 @@ export default function Dashboard() {
 
       {/* Bottom Nav */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navButton} onPress={() => router.push("/dashboard")}>
+        <TouchableOpacity style={styles.navButton} onPress={handleRefresh}>
           <FontAwesome name="home" size={24} color="#007bff" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navButton}>
