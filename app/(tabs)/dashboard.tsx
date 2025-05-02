@@ -121,8 +121,9 @@ export default function Dashboard() {
           <Text style={styles.greeting}>
             Hello, {lastName || user.displayName || "User"} 👋
           </Text>
-          <TouchableOpacity onPress={logout}>
+          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
             <MaterialIcons name="logout" size={24} color="#000" />
+            <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
 
@@ -300,5 +301,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  logoutText: {
+    marginLeft: 4,
+    fontSize: 16,
+    color: "#000",
   },
 });
