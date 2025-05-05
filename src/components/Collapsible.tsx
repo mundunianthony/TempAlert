@@ -6,7 +6,7 @@ import { ThemedView } from "@/src/components/ThemedView";
 import { IconSymbol } from "@/src/components/ui/IconSymbol";
 import { Colors } from "@/src/constants/Colors";
 import { useColorScheme } from "@/src/hooks/useColorScheme";
-
+//
 export function Collapsible({
   children,
   title,
