@@ -46,10 +46,13 @@ export default function Dashboard() {
     const unsubscribeStorerooms = onSnapshot(
       collection(database, "storerooms"),
       (snapshot) => {
-        const rooms = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        } as Storeroom));
+        const rooms = snapshot.docs.map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+            } as Storeroom)
+        );
         setStorerooms(rooms);
       }
     );
@@ -57,7 +60,9 @@ export default function Dashboard() {
     const unsubscribeTemp = onSnapshot(
       collection(database, "temperatureHistory/storeroom1/points"),
       (snapshot) => {
-        const temps = snapshot.docs.map((doc) => doc.data() as TemperatureDataPoint);
+        const temps = snapshot.docs.map(
+          (doc) => doc.data() as TemperatureDataPoint
+        );
         setChartData(temps.map((point) => point.value));
       }
     );
@@ -86,7 +91,9 @@ export default function Dashboard() {
 
     const now = new Date();
     const alertTime = new Date(timestamp);
-    const diffSeconds = Math.floor((now.getTime() - alertTime.getTime()) / 1000);
+    const diffSeconds = Math.floor(
+      (now.getTime() - alertTime.getTime()) / 1000
+    );
 
     if (diffSeconds < 60) {
       return "< 1 min ago";
@@ -124,7 +131,9 @@ export default function Dashboard() {
       .filter((room) => room.temperature <= 15 || room.temperature >= 25)
       .map((room) => ({
         message: getAlertMessage(room.temperature, room.name),
-        timestamp: room.lastUpdated ? room.lastUpdated.toDate().toISOString() : "",
+        timestamp: room.lastUpdated
+          ? room.lastUpdated.toDate().toISOString()
+          : "",
       }));
   }, [storerooms]);
 
@@ -219,7 +228,10 @@ export default function Dashboard() {
             alerts.map((alert, index) => (
               <View
                 key={index}
-                style={[styles.row, index < alerts.length - 1 && styles.divider]}
+                style={[
+                  styles.row,
+                  index < alerts.length - 1 && styles.divider,
+                ]}
               >
                 <Text style={styles.alertMessage}>{alert.message}</Text>
                 <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
