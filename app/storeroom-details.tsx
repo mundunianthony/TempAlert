@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
-import { useRouter, useSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { getFirestore } from "@/src/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 
@@ -14,7 +14,7 @@ interface TemperatureDataPoint {
 
 export default function StoreroomDetails() {
   const router = useRouter();
-  const { storeroomId, storeroomName } = useSearchParams<{
+  const { storeroomId, storeroomName } = useLocalSearchParams<{
     storeroomId: string;
     storeroomName: string;
   }>();
