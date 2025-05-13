@@ -17,6 +17,7 @@ import { collection, onSnapshot, Timestamp } from "firebase/firestore";
 const database = getFirestore();
 
 interface Storeroom {
+  id: string;
   name: string;
   temperature: number;
   status: "Normal" | "Warning" | "Critical";
@@ -45,7 +46,10 @@ export default function Dashboard() {
     const unsubscribeStorerooms = onSnapshot(
       collection(database, "storerooms"),
       (snapshot) => {
-        const rooms = snapshot.docs.map((doc) => doc.data() as Storeroom);
+        const rooms = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        } as Storeroom));
         setStorerooms(rooms);
       }
     );
@@ -53,9 +57,7 @@ export default function Dashboard() {
     const unsubscribeTemp = onSnapshot(
       collection(database, "temperatureHistory/storeroom1/points"),
       (snapshot) => {
-        const temps = snapshot.docs.map(
-          (doc) => doc.data() as TemperatureDataPoint
-        );
+        const temps = snapshot.docs.map((doc) => doc.data() as TemperatureDataPoint);
         setChartData(temps.map((point) => point.value));
       }
     );
@@ -84,9 +86,7 @@ export default function Dashboard() {
 
     const now = new Date();
     const alertTime = new Date(timestamp);
-    const diffSeconds = Math.floor(
-      (now.getTime() - alertTime.getTime()) / 1000
-    );
+    const diffSeconds = Math.floor((now.getTime() - alertTime.getTime()) / 1000);
 
     if (diffSeconds < 60) {
       return "< 1 min ago";
@@ -124,9 +124,7 @@ export default function Dashboard() {
       .filter((room) => room.temperature <= 15 || room.temperature >= 25)
       .map((room) => ({
         message: getAlertMessage(room.temperature, room.name),
-        timestamp: room.lastUpdated
-          ? room.lastUpdated.toDate().toISOString()
-          : "",
+        timestamp: room.lastUpdated ? room.lastUpdated.toDate().toISOString() : "",
       }));
   }, [storerooms]);
 
@@ -159,19 +157,22 @@ export default function Dashboard() {
         {/* Storeroom Overview */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Storeroom Overview</Text>
-          {storerooms.map((room, index) => (
-            <View
-              key={index}
-              style={[
-                styles.row,
-                index < storerooms.length - 1 && styles.divider,
-              ]}
+          {storerooms.map((room) => (
+            <TouchableOpacity
+              key={room.id}
+              onPress={() =>
+                router.push({
+                  pathname: "/storeroom-details",
+                  params: { storeroomId: room.id, storeroomName: room.name },
+                })
+              }
+              style={[styles.row, styles.touchableRow]}
             >
               <Text style={styles.roomName}>{room.name}</Text>
               <Text style={[styles.roomStatus, getStatusColor(room.status)]}>
                 {room.status} {room.temperature}°
               </Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
 
@@ -218,10 +219,7 @@ export default function Dashboard() {
             alerts.map((alert, index) => (
               <View
                 key={index}
-                style={[
-                  styles.row,
-                  index < alerts.length - 1 && styles.divider,
-                ]}
+                style={[styles.row, index < alerts.length - 1 && styles.divider]}
               >
                 <Text style={styles.alertMessage}>{alert.message}</Text>
                 <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
@@ -357,5 +355,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 16,
     color: "#000",
+  },
+  touchableRow: {
+    padding: 10,
   },
 });
