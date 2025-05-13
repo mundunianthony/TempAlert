@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { useRouter } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
 import { Feather, FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { getFirestore } from "@/src/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, Timestamp } from "firebase/firestore";
 
 const database = getFirestore();
 
@@ -20,11 +20,7 @@ interface Storeroom {
   name: string;
   temperature: number;
   status: "Normal" | "Warning" | "Critical";
-}
-
-interface Alert {
-  message: string;
-  timestamp: string;
+  lastUpdated: Timestamp;
 }
 
 interface TemperatureDataPoint {
@@ -36,9 +32,8 @@ export default function Dashboard() {
   const { user, lastName, logout } = useAuth();
   const router = useRouter();
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [chartData, setChartData] = useState<number[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0); // Add refreshKey state
+  const [refreshKey, setRefreshKey] = useState(0);
   const screenWidth = Dimensions.get("window").width;
 
   useEffect(() => {
@@ -55,14 +50,6 @@ export default function Dashboard() {
       }
     );
 
-    const unsubscribeAlerts = onSnapshot(
-      collection(database, "alerts"),
-      (snapshot) => {
-        const alertList = snapshot.docs.map((doc) => doc.data() as Alert);
-        setAlerts(alertList);
-      }
-    );
-
     const unsubscribeTemp = onSnapshot(
       collection(database, "temperatureHistory/storeroom1/points"),
       (snapshot) => {
@@ -75,10 +62,9 @@ export default function Dashboard() {
 
     return () => {
       unsubscribeStorerooms();
-      unsubscribeAlerts();
       unsubscribeTemp();
     };
-  }, [user, router, refreshKey]); // Add refreshKey as a dependency
+  }, [user, router, refreshKey]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -94,15 +80,58 @@ export default function Dashboard() {
   };
 
   const timeAgo = (timestamp: string) => {
+    if (!timestamp) return "Unknown time";
+
     const now = new Date();
     const alertTime = new Date(timestamp);
-    const diff = Math.floor((now.getTime() - alertTime.getTime()) / 60000);
-    if (diff < 60) return `${diff}m ago`;
-    return `${Math.floor(diff / 60)}h ago`;
+    const diffSeconds = Math.floor(
+      (now.getTime() - alertTime.getTime()) / 1000
+    );
+
+    if (diffSeconds < 60) {
+      return "< 1 min ago";
+    }
+
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) {
+      return `${diffMinutes} ${diffMinutes === 1 ? "min" : "mins"} ago`;
+    }
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+      return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
   };
 
+  const getAlertMessage = (temperature: number, storeroomName: string) => {
+    if (temperature <= 15) {
+      return `⚠️ Temperature too low in ${storeroomName} (${temperature}°C)! Risk of freezing—check cooling system.`;
+    } else if (temperature >= 25 && temperature <= 30) {
+      return `⚠️ Temperature warming up in ${storeroomName} (${temperature}°C)—monitor to prevent spoilage.`;
+    } else if (temperature >= 31 && temperature <= 40) {
+      return `🔥 Temperature too hot in ${storeroomName} (${temperature}°C)! Risk of spoilage—take action now.`;
+    } else if (temperature > 40) {
+      return `🚨 Critical heat in ${storeroomName} (${temperature}°C)! Immediate intervention required.`;
+    }
+    return "No alert";
+  };
+
+  const alerts = useMemo(() => {
+    return storerooms
+      .filter((room) => room.temperature <= 15 || room.temperature >= 25)
+      .map((room) => ({
+        message: getAlertMessage(room.temperature, room.name),
+        timestamp: room.lastUpdated
+          ? room.lastUpdated.toDate().toISOString()
+          : "",
+      }));
+  }, [storerooms]);
+
   const handleRefresh = () => {
-    setRefreshKey((prevKey) => prevKey + 1); // Increment refreshKey to trigger re-render
+    setRefreshKey((prevKey) => prevKey + 1);
   };
 
   if (!user) {
@@ -133,7 +162,10 @@ export default function Dashboard() {
           {storerooms.map((room, index) => (
             <View
               key={index}
-              style={[styles.row, index < storerooms.length - 1 && styles.divider]}
+              style={[
+                styles.row,
+                index < storerooms.length - 1 && styles.divider,
+              ]}
             >
               <Text style={styles.roomName}>{room.name}</Text>
               <Text style={[styles.roomStatus, getStatusColor(room.status)]}>
@@ -182,15 +214,22 @@ export default function Dashboard() {
         {/* Alerts Section */}
         <View style={[styles.card, { marginBottom: 80 }]}>
           <Text style={styles.cardTitle}>Alerts</Text>
-          {alerts.map((alert, index) => (
-            <View
-              key={index}
-              style={[styles.row, index < alerts.length - 1 && styles.divider]}
-            >
-              <Text style={styles.alertMessage}>{alert.message}</Text>
-              <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
-            </View>
-          ))}
+          {alerts.length > 0 ? (
+            alerts.map((alert, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.row,
+                  index < alerts.length - 1 && styles.divider,
+                ]}
+              >
+                <Text style={styles.alertMessage}>{alert.message}</Text>
+                <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noAlerts}>No active alerts</Text>
+          )}
         </View>
       </ScrollView>
 
@@ -205,7 +244,10 @@ export default function Dashboard() {
         <TouchableOpacity style={styles.navButton}>
           <Feather name="bell" size={24} color="#007bff" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton} onPress={() => router.push("/profile")}>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => router.push("/profile")}
+        >
           <Feather name="settings" size={24} color="#007bff" />
         </TouchableOpacity>
       </View>
@@ -271,6 +313,11 @@ const styles = StyleSheet.create({
   alertTime: {
     fontSize: 14,
     color: "#6b7280",
+  },
+  noAlerts: {
+    fontSize: 16,
+    color: "#6b7280",
+    textAlign: "center",
   },
   loadingText: {
     fontSize: 16,
