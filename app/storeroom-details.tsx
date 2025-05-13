@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
-import { useSearchParams } from "react-router-dom";
+import { useRouter, useSearchParams } from "expo-router";
 import { getFirestore } from "@/src/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 
@@ -15,8 +14,13 @@ interface TemperatureDataPoint {
 
 export default function StoreroomDetails() {
   const router = useRouter();
-  const { storeroomId, storeroomName } = useSearchParams<{ storeroomId: string; storeroomName: string }>();
-  const [alerts, setAlerts] = useState<{ id: string; message: string; timestamp: string }[]>([]);
+  const { storeroomId, storeroomName } = useSearchParams<{
+    storeroomId: string;
+    storeroomName: string;
+  }>();
+  const [alerts, setAlerts] = useState<
+    { id: string; message: string; timestamp: string }[]
+  >([]);
 
   useEffect(() => {
     if (!storeroomId) return;
@@ -24,22 +28,26 @@ export default function StoreroomDetails() {
     const unsubscribe = onSnapshot(
       collection(database, `temperatureHistory/${storeroomId}/points`),
       (snapshot) => {
-        const points = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        } as TemperatureDataPoint));
+        const points = snapshot.docs.map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+            } as TemperatureDataPoint)
+        );
 
         const filteredPoints = points.filter(
           (point) => point.value <= 15 || point.value >= 25
         );
 
         const sortedPoints = filteredPoints.sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
 
         const historicalAlerts = sortedPoints.map((point) => ({
           id: point.id,
-          message: getAlertMessage(point.value, storeroomName),
+          message: getAlertMessage(point.value, storeroomName || "Storeroom"),
           timestamp: point.timestamp,
         }));
 
@@ -68,7 +76,9 @@ export default function StoreroomDetails() {
 
     const now = new Date();
     const alertTime = new Date(timestamp);
-    const diffSeconds = Math.floor((now.getTime() - alertTime.getTime()) / 1000);
+    const diffSeconds = Math.floor(
+      (now.getTime() - alertTime.getTime()) / 1000
+    );
 
     if (diffSeconds < 60) {
       return "< 1 min ago";
@@ -90,7 +100,9 @@ export default function StoreroomDetails() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{storeroomName} Historical Alerts</Text>
+      <Text style={styles.title}>
+        {storeroomName || "Storeroom"} Historical Alerts
+      </Text>
       <ScrollView>
         {alerts.length > 0 ? (
           alerts.map((alert) => (
@@ -121,7 +133,7 @@ const styles = StyleSheet.create({
   alertRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    align "center",
+    alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
