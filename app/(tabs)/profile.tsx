@@ -11,7 +11,6 @@ import {
 import { useAuth } from "@/src/context/AuthContext";
 import { updatePassword, updateProfile, updateEmail } from "firebase/auth";
 import { auth } from "@/src/lib/firebase";
-
 export default function Profile() {
   const { user, refreshUser } = useAuth(); // Add refreshUser from AuthContext
 

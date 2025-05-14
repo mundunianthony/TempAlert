@@ -20,5 +20,4 @@ const authInstance = getAuth(app);
 const firestoreInstance = getFirestore(app);
 
 // Export
-// Export
-export { authInstance, firestoreInstance, getFirestore };
+export { authInstance as auth, firestoreInstance, getFirestore };
