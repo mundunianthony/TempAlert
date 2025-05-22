@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "571700583727",
+    "project_id": "tempalert-56e58",
+    "storage_bucket": "tempalert-56e58.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:571700583727:android:410d87858909004c5795da",
+        "android_client_info": {
+          "package_name": "com.tempalert.tempalert"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSkwD7z40UdKs16Dq4IKxebAVDZUVRahg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
