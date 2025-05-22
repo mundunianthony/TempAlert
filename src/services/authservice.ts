@@ -1,6 +1,5 @@
-// src/services/authService.ts
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from './firebaseConfig';
+import { auth, db } from '../config/firebaseconfig';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export const signUp = async (email: string, password: string) => {
