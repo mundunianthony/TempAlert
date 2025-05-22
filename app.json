@@ -13,17 +13,15 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.tempalert.tempalert"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.tempalert.tempalert",
-      "googleServicesFile": "./google-services.json"},
+      "edgeToEdgeEnabled": true
+    },
     "web": {
       "favicon": "./assets/favicon.png"
     }
