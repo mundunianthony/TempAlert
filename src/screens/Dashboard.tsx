@@ -1,60 +1,134 @@
-// src/screens/Dashboard.tsx
-
 import React, { useEffect, useState, useContext } from "react";
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
-import { getFirestore, collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { getFirestore, collection, onSnapshot, query, orderBy, DocumentData } from "firebase/firestore";
 import { AuthContext } from "../contexts/AuthContext";
-import LineChart from "../components/LineChart"; 
+import LineChart from "../components/LineChart";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
+import { updateStoreroomData } from "../services/firestoreService";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-const thresholds = [
-  { range: [0, 15], label: "Too Cold", color: "blue", icon: "snow" },
-  { range: [16, 24], label: "Optimal", color: "green", icon: "checkmark-circle" },
-  { range: [25, 30], label: "Warming Up", color: "yellow", icon: "alert-circle" },
-  { range: [31, 40], label: "Too Hot", color: "orange", icon: "flame" },
-  { range: [41, 100], label: "Critical Heat", color: "red", icon: "warning" },
+// Define navigation param list
+type RootStackParamList = {
+  Dashboard: undefined;
+  Alerts: undefined;
+  Settings: undefined;
+  StoreroomHistory: { storeroomId: string };
+};
+
+// Define navigation prop type
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// Define interfaces for data
+interface Threshold {
+  range: [number, number];
+  label: string;
+  color: string;
+  icon: "snow" | "checkmark-circle" | "alert-circle" | "flame" | "warning" | "help-circle";
+  status: string;
+}
+
+interface Storeroom {
+  id: string;
+  name: string;
+  latestReading: {
+    temperature: number;
+    unit: string;
+    timestamp: any; // Firestore Timestamp
+    status: string;
+  };
+}
+
+interface Alert {
+  id: string;
+  storeroomId: string;
+  message: string;
+  timestamp: any; // Firestore Timestamp
+  status: string;
+}
+
+const thresholds: Threshold[] = [
+  { range: [0, 15], label: "Too Cold", color: "blue", icon: "snow", status: "Too Cold" },
+  { range: [16, 24], label: "Optimal", color: "green", icon: "checkmark-circle", status: "Optimal" },
+  { range: [25, 30], label: "Warming Up", color: "yellow", icon: "alert-circle", status: "Warming Up" },
+  { range: [31, 40], label: "Too Hot", color: "orange", icon: "flame", status: "Too Hot" },
+  { range: [41, 100], label: "Critical Heat", color: "red", icon: "warning", status: "Critical" },
 ];
 
-const getStatus = (temp) => {
+const getStatus = (temp: number): Threshold => {
   for (let t of thresholds) {
     if (temp >= t.range[0] && temp <= t.range[1]) return t;
   }
-  return { label: "Unknown", color: "gray", icon: "help-circle" };
+  return { range: [Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY], label: "Unknown", color: "gray", icon: "help-circle", status: "Unknown" };
 };
 
 export default function Dashboard() {
   const { user } = useContext(AuthContext);
-  const navigation = useNavigation();
-  const [storerooms, setStorerooms] = useState([]);
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const navigation = useNavigation<NavigationProp>();
+  const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const db = getFirestore();
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "storerooms"), (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setStorerooms(data);
-      setLoading(false);
-    });
-
-    const unsubscribeAlerts = onSnapshot(
-      query(collection(db, "alerts"), orderBy("createdAt", "desc")),
+    // Fetch storerooms in real-time
+    const unsubscribe = onSnapshot(
+      collection(db, "storerooms"),
       (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAlerts(data);
+        const data: Storeroom[] = snapshot.docs.map((doc) => {
+          const docData = doc.data() as DocumentData;
+          return {
+            id: doc.id,
+            name: docData.name ?? "Unnamed",
+            latestReading: docData.latestReading ?? { temperature: 0, unit: "°C", timestamp: null, status: "Unknown" },
+          };
+        });
+        setStorerooms(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Storerooms listener error:", error);
+        setLoading(false);
       }
     );
+
+    // Fetch alerts in real-time
+    const unsubscribeAlerts = onSnapshot(
+      query(collection(db, "alerts"), orderBy("timestamp", "desc")),
+      (snapshot) => {
+        const data: Alert[] = snapshot.docs.map((doc) => {
+          const docData = doc.data() as DocumentData;
+          return {
+            id: doc.id,
+            storeroomId: docData.storeroomId ?? "",
+            message: docData.message ?? "",
+            timestamp: docData.timestamp ?? null,
+            status: docData.status ?? "",
+          };
+        });
+        setAlerts(data);
+      },
+      (error) => {
+        console.error("Alerts listener error:", error);
+      }
+    );
+
+    // Periodic data updates (every 60 seconds)
+    updateStoreroomData().catch((error) => console.error("Initial update error:", error));
+    const interval = setInterval(() => {
+      updateStoreroomData().catch((error) => console.error("Update error:", error));
+    }, 60000);
 
     return () => {
       unsubscribe();
       unsubscribeAlerts();
+      clearInterval(interval);
     };
   }, []);
 
-  const renderStoreroom = ({ item }) => {
-    const status = getStatus(item.temperature);
+  const renderStoreroom = ({ item }: { item: Storeroom }) => {
+    const status = getStatus(item.latestReading?.temperature ?? 0);
 
     return (
       <TouchableOpacity
@@ -62,7 +136,7 @@ export default function Dashboard() {
         style={styles.storeroomRow}
       >
         <Text style={styles.roomName}>{item.name}</Text>
-        <Text>{item.temperature}°C</Text>
+        <Text>{item.latestReading?.temperature ?? "N/A"}°C</Text>
         <Text style={[styles.status, { color: status.color }]}>
           <Icon name={status.icon} size={18} /> {status.label}
         </Text>
@@ -73,33 +147,38 @@ export default function Dashboard() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>🌡️ TempAlert</Text>
-      <Text style={styles.welcome}>Welcome, {user?.displayName || user?.email}!</Text>
+      <Text style={styles.welcome}>Welcome, {user?.displayName || user?.email || "Guest"}!</Text>
 
-      {loading ? <ActivityIndicator size="large" /> : (
+      {loading ? (
+        <ActivityIndicator size="large" />
+      ) : (
         <>
           <FlatList
             data={storerooms}
             renderItem={renderStoreroom}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item: Storeroom) => item.id}
             ListHeaderComponent={<Text style={styles.sectionTitle}>Storerooms</Text>}
           />
 
           <Text style={styles.sectionTitle}>Temperature Trends</Text>
-          <LineChart data={storerooms} />
+          <LineChart
+            labels={storerooms.map((s) => s.name)}
+            dataPoints={storerooms.map((s) => s.latestReading?.temperature ?? 0)}
+          />
 
           <Text style={styles.updated}>
-            Last updated: {alerts[0]?.createdAt?.toDate().toLocaleString() || "N/A"}
+            Last updated: {alerts[0]?.timestamp?.toDate()?.toLocaleString() ?? "N/A"}
           </Text>
 
           <Text style={styles.sectionTitle}>Alerts</Text>
           <FlatList
             data={alerts.slice(0, 10)}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
+            keyExtractor={(item: Alert) => item.id}
+            renderItem={({ item }: { item: Alert }) => (
               <View style={styles.alertRow}>
                 <Text>{item.message}</Text>
                 <Text style={styles.alertTime}>
-                  {item.createdAt?.toDate().toLocaleTimeString()}
+                  {item.timestamp?.toDate()?.toLocaleTimeString() ?? "N/A"}
                 </Text>
               </View>
             )}
