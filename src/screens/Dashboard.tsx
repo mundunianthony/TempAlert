@@ -4,7 +4,7 @@ import React, { useEffect, useState, useContext } from "react";
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
 import { getFirestore, collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { AuthContext } from "../contexts/AuthContext";
-import LineChart from "../components/LineChart"; // Assume this is your component
+import LineChart from "../components/LineChart"; 
 import Icon from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 

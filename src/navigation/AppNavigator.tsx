@@ -1,24 +1,28 @@
-// src/navigation/AppNavigator.tsx
-
-import React from "react";
+import React, { useContext } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { NavigationContainer } from "@react-navigation/native";
+import Login from "../screens/Login";
+import Signup from "../screens/Signup";
 import Dashboard from "../screens/Dashboard";
-import Alerts from "../screens/Alerts";
-import StoreroomHistory from "../screens/StoreroomHistory";
-import Settings from "../screens/Settings";
+
+import { AuthContext } from "../contexts/AuthContext";
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
+  const { user } = useContext(AuthContext);
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Dashboard">
-        <Stack.Screen name="Dashboard" component={Dashboard} />
-        <Stack.Screen name="Alerts" component={Alerts} />
-        <Stack.Screen name="StoreroomHistory" component={StoreroomHistory} />
-        <Stack.Screen name="Settings" component={Settings} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {!user ? (
+        <>
+          <Stack.Screen name="Login" component={Login} />
+          <Stack.Screen name="Signup" component={Signup} />
+        </>
+      ) : (
+        <>
+          <Stack.Screen name="Dashboard" component={Dashboard} />
+        </>
+      )}
+    </Stack.Navigator>
   );
 }
