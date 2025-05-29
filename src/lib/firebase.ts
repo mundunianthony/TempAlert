@@ -1,18 +1,24 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps, getApp } from "firebase/app"; 
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
+// Your Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCyflZ6cKrDa2SmHMz5es3Oxn62u3fJQtI",
+  authDomain: "tempalert-7abb2.firebaseapp.com",
+  projectId: "tempalert-7abb2",
+  storageBucket: "tempalert-7abb2.appspot.com",
+  messagingSenderId: "952450715967",
+  appId: "1:952450715967:web:558fc36f4eefb7da2ac38a",
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Initialize Firebase App
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-export { auth, db };
+// Initialize Firebase Services
+const authInstance = getAuth(app);
+const firestoreInstance = getFirestore(app);
+
+// Export
+// Export
+export { authInstance, firestoreInstance, getFirestore };
