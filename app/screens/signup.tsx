@@ -149,7 +149,7 @@ export default function SignUpScreen() {
 
         <Text style={styles.loginText}>
           Already have an account?{" "}
-          <Link href="../login">
+          <Link href="./login">
             <Text style={styles.loginLink}>Login</Text>
           </Link>
         </Text>
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(11, 9, 9, 0.5)", // Reduced from 0.85 to 0.5
     paddingHorizontal: 24,
-  },  
+  },
   title: {
     fontSize: 30,
     fontWeight: "bold",

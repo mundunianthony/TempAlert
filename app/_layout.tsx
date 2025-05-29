@@ -28,7 +28,7 @@ export default function RootLayout() {
     async function prepare() {
       try {
         // Add any async initialization here (auth checks, API calls, etc.)
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulated loading
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Simulated loading
       } catch (error) {
         console.error(error);
       } finally {
@@ -54,23 +54,22 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        {/* Robust navigation setup */}
         <Stack
           screenOptions={{
             headerShown: false,
             animation: "fade",
           }}
-          initialRouteName="index" // Explicit initial route
+          initialRouteName="login"
         >
-          <Stack.Screen name="index" />
           <Stack.Screen name="login" />
           <Stack.Screen name="signup" />
           <Stack.Screen name="forgot-password" />
-          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="screens/dashboard" />
+          <Stack.Screen name="screens/profile" />
+          <Stack.Screen name="screens/alerts" />
+          <Stack.Screen name="index" />
           <Stack.Screen name="+not-found" />
         </Stack>
-
-        {/* Platform-safe status bar */}
         <StatusBar
           animated={true}
           backgroundColor="transparent"
