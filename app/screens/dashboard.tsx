@@ -13,6 +13,7 @@ import { LineChart } from "react-native-chart-kit";
 import { Feather, FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { getFirestore } from "@/src/lib/firebase";
 import { collection, onSnapshot, Timestamp } from "firebase/firestore";
+import Navbar from "@/src/components/Navbar";
 
 const database = getFirestore();
 
@@ -244,23 +245,12 @@ export default function Dashboard() {
       </ScrollView>
 
       {/* Bottom Nav */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navButton} onPress={handleRefresh}>
-          <FontAwesome name="home" size={24} color="#007bff" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}>
-          <Feather name="clock" size={24} color="#007bff" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}>
-          <Feather name="bell" size={24} color="#007bff" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => router.push("/screens/profile")}
-        >
-          <Feather name="settings" size={24} color="#007bff" />
-        </TouchableOpacity>
-      </View>
+      <Navbar
+        onRefresh={handleRefresh}
+        onNavigateProfile={() => router.push("/screens/profile")}
+        onNavigateHome={() => router.replace("/screens/dashboard")}
+        alerts={alerts}
+      />
     </View>
   );
 }
