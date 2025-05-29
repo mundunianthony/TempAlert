@@ -83,7 +83,7 @@ export default function Login() {
         </View>
 
         <TouchableOpacity
-          onPress={() => router.push("/forgot-password")}
+          onPress={() => router.push("/screens/forgot-password")}
           style={styles.forgotPassword}
         >
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
@@ -102,7 +102,7 @@ export default function Login() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.push("/signup")}
+          onPress={() => router.push("/screens/signup")}
           style={styles.signup}
         >
           <Text style={styles.signupText}>

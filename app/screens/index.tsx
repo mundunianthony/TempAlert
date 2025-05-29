@@ -6,5 +6,5 @@ export default function Index() {
     console.log("Redirecting to /login...");
   }, []);
 
-  return <Redirect href="./login" />;
+  return <Redirect href="/login" />;
 }
