@@ -53,9 +53,6 @@ export default function Navbar({
         <TouchableOpacity style={styles.navButton} onPress={onNavigateHome}>
           <FontAwesome name="home" size={24} color="#007bff" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}>
-          <Feather name="clock" size={24} color="#007bff" />
-        </TouchableOpacity>
         <TouchableOpacity
           style={styles.navButton}
           onPress={() => setModalVisible(true)}
