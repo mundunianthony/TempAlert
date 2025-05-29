@@ -11,7 +11,7 @@ import {
 import { authInstance } from "@/src/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "expo-router";
-import { useAuth } from "../src/context/AuthContext";
+import { useAuth } from "../../src/context/AuthContext";
 
 const backgroundImage = {
   uri: "https://images.unsplash.com/photo-1744125235979-4286ddb612b5?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",

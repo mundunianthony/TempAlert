@@ -1,4 +1,3 @@
-// app/index.tsx
 import { Redirect } from "expo-router";
 import { useEffect } from "react";
 
@@ -7,5 +6,5 @@ export default function Index() {
     console.log("Redirecting to /login...");
   }, []);
 
-  return <Redirect href="/login" />;
+  return <Redirect href="./login" />;
 }

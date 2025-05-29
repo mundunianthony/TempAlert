@@ -171,7 +171,7 @@ export default function Dashboard() {
               key={room.id}
               onPress={() =>
                 router.push({
-                  pathname: "/storeroom-details",
+                  pathname: "./storeroom-details",
                   params: { storeroomId: room.id, storeroomName: room.name },
                 })
               }
@@ -256,7 +256,7 @@ export default function Dashboard() {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.navButton}
-          onPress={() => router.push("/profile")}
+          onPress={() => router.push("/screens/profile")}
         >
           <Feather name="settings" size={24} color="#007bff" />
         </TouchableOpacity>
