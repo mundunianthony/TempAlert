@@ -149,7 +149,7 @@ export default function SignUpScreen() {
 
         <Text style={styles.loginText}>
           Already have an account?{" "}
-          <Link href="./login">
+          <Link href="/login">
             <Text style={styles.loginLink}>Login</Text>
           </Link>
         </Text>
