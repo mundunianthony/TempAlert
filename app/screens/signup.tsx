@@ -48,7 +48,8 @@ export default function SignUpScreen() {
 
     try {
       setLoading(true);
-      await register(firstName, lastName, email, password);
+      // Note: register expects (email, password, firstName, lastName)
+      await register(email, password, firstName, lastName);
       router.replace("/");
     } catch (err) {
       Alert.alert(
