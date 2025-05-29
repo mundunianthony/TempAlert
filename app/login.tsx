@@ -27,8 +27,14 @@ export default function Login() {
   const { user } = useAuth();
 
   const handleLogin = async () => {
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !password) {
       setError("Please fill in both fields.");
+      return;
+    }
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address.");
       return;
     }
 
