@@ -178,7 +178,6 @@ export default function SignUpScreen() {
             </Animated.View>
             
             <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Sign up to monitor your storeroom temperatures</Text>
 
             <View style={styles.formContainer}>
               <View style={styles.nameRow}>
