@@ -11,10 +11,10 @@ interface NavbarProps {
 }
 
 export default function Navbar({
-  onRefresh,
-  onNavigateProfile,
-  onNavigateHome,
-  onNavigateAlerts,
+  onRefresh = () => {},
+  onNavigateProfile = () => {},
+  onNavigateHome = () => {},
+  onNavigateAlerts = () => {},
   alerts,
 }: NavbarProps) {
   return (

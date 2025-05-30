@@ -10,9 +10,12 @@ import {
 } from "react-native";
 import { useAuth } from "@/src/context/AuthContext";
 import { updatePassword, updateProfile, updateEmail } from "firebase/auth";
+import Navbar from "@/src/components/Navbar";
+import { useRouter } from "expo-router";
 
 export default function Profile() {
   const { user, refreshUser } = useAuth(); // Add refreshUser from AuthContext
+  const router = useRouter();
 
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -50,44 +53,53 @@ export default function Profile() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Update Profile</Text>
+    <View style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Update Profile</Text>
 
-      <Text style={styles.label}>Display Name</Text>
-      <TextInput
-        style={styles.input}
-        value={displayName}
-        onChangeText={setDisplayName}
+        <Text style={styles.label}>Display Name</Text>
+        <TextInput
+          style={styles.input}
+          value={displayName}
+          onChangeText={setDisplayName}
+        />
+
+        <Text style={styles.label}>Email Address</Text>
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+
+        <Text style={styles.label}>New Password</Text>
+        <TextInput
+          style={styles.input}
+          value={newPassword}
+          onChangeText={setNewPassword}
+          secureTextEntry
+          placeholder="Leave blank to keep current password"
+        />
+
+        <TouchableOpacity
+          style={[styles.button, loading && { backgroundColor: "#ccc" }]}
+          onPress={handleUpdateProfile}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Updating..." : "Save Changes"}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+      <Navbar
+        onRefresh={() => {}} // No refresh on profile screen, or provide a handler if needed
+        onNavigateProfile={() => {}} // Already on profile, can be a no-op
+        onNavigateHome={() => router.replace("/screens/dashboard")}
+        onNavigateAlerts={() => router.push("/screens/alerts")}
+        alerts={[]} // No alerts context here, or pass from props/context if available
       />
-
-      <Text style={styles.label}>Email Address</Text>
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-
-      <Text style={styles.label}>New Password</Text>
-      <TextInput
-        style={styles.input}
-        value={newPassword}
-        onChangeText={setNewPassword}
-        secureTextEntry
-        placeholder="Leave blank to keep current password"
-      />
-
-      <TouchableOpacity
-        style={[styles.button, loading && { backgroundColor: "#ccc" }]}
-        onPress={handleUpdateProfile}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? "Updating..." : "Save Changes"}
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 }
 

@@ -4,6 +4,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { useRouter } from "expo-router";
 import { getFirestore } from "@/src/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
+import Navbar from "@/src/components/Navbar";
 
 const database = getFirestore();
 
@@ -51,18 +52,27 @@ export default function Alerts() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Alerts</Text>
-      {alerts.map((alert, index) => (
-        <View
-          key={index}
-          style={[styles.row, index < alerts.length - 1 && styles.divider]}
-        >
-          <Text style={styles.alertMessage}>{alert.message}</Text>
-          <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
-        </View>
-      ))}
-    </ScrollView>
+    <View style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Alerts</Text>
+        {alerts.map((alert, index) => (
+          <View
+            key={index}
+            style={[styles.row, index < alerts.length - 1 && styles.divider]}
+          >
+            <Text style={styles.alertMessage}>{alert.message}</Text>
+            <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
+          </View>
+        ))}
+      </ScrollView>
+      <Navbar
+        onRefresh={() => {}} // or remove if not needed
+        onNavigateProfile={() => router.push("/screens/profile")}
+        onNavigateHome={() => router.replace("/screens/dashboard")}
+        onNavigateAlerts={() => router.replace("/screens/alerts")}
+        alerts={alerts}
+      />
+    </View>
   );
 }
 
