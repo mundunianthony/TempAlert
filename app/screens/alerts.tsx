@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -11,20 +11,23 @@ import {
 import { useAuth } from "@/src/context/AuthContext";
 import { useRouter } from "expo-router";
 import { getFirestore } from "@/src/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, Timestamp } from "firebase/firestore";
 import Navbar from "@/src/components/Navbar";
 
 const database = getFirestore();
 
-interface Alert {
-  message: string;
-  timestamp: string;
+interface Storeroom {
+  id: string;
+  name: string;
+  temperature: number;
+  status: "Normal" | "Warning" | "Critical";
+  lastUpdated: Timestamp;
 }
 
 export default function Alerts() {
   const { user } = useAuth();
   const router = useRouter();
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -32,18 +35,52 @@ export default function Alerts() {
       return;
     }
 
-    const unsubscribeAlerts = onSnapshot(
-      collection(database, "alerts"),
+    const unsubscribeStorerooms = onSnapshot(
+      collection(database, "storerooms"),
       (snapshot) => {
-        const alertList = snapshot.docs.map((doc) => doc.data() as Alert);
-        setAlerts(alertList);
+        const rooms = snapshot.docs.map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+            } as Storeroom)
+        );
+        setStorerooms(rooms);
       }
     );
 
-    return () => unsubscribeAlerts();
+    return () => unsubscribeStorerooms();
   }, [user, router]);
 
+  const getAlertMessage = (temperature: number, storeroomName: string) => {
+    if (temperature <= 15) {
+      return `Temperature too low in ${storeroomName} (${temperature}°C)! Risk of freezing—check cooling system.`;
+    } else if (temperature >= 25 && temperature <= 30) {
+      return `Temperature warming up in ${storeroomName} (${temperature}°C)—monitor to prevent spoilage.`;
+    } else if (temperature >= 31 && temperature <= 40) {
+      return `Temperature too hot in ${storeroomName} (${temperature}°C)! Risk of spoilage—take action now.`;
+    } else if (temperature > 40) {
+      return `Critical heat in ${storeroomName} (${temperature}°C)! Immediate intervention required.`;
+    }
+    return "";
+  };
+
+  const alerts = useMemo(() => {
+    return storerooms
+      .filter((room) => room.temperature <= 15 || room.temperature >= 25)
+      .map((room) => ({
+        message: getAlertMessage(room.temperature, room.name),
+        timestamp: room.lastUpdated
+          ? room.lastUpdated.toDate().toISOString()
+          : "",
+        storeroomName: room.name,
+        temperature: room.temperature,
+      }))
+      .filter((alert) => alert.message); // Remove empty messages
+  }, [storerooms]);
+
   const timeAgo = (timestamp: string) => {
+    if (!timestamp) return "";
     const now = new Date();
     const alertTime = new Date(timestamp);
     const diff = Math.floor((now.getTime() - alertTime.getTime()) / 60000);
@@ -78,7 +115,10 @@ export default function Alerts() {
                   index < alerts.length - 1 && styles.divider,
                 ]}
               >
-                <Text style={styles.alertMessage}>{alert.message}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.alertMessage}>{alert.message}</Text>
+                  <Text style={styles.alertStoreroom}>{alert.storeroomName}</Text>
+                </View>
                 <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
               </View>
             ))
@@ -120,7 +160,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     paddingVertical: 12,
   },
   divider: {
@@ -130,14 +170,19 @@ const styles = StyleSheet.create({
   alertMessage: {
     fontSize: 16,
     color: "#000",
-    flex: 1,
-    marginRight: 12,
+    marginBottom: 2,
+  },
+  alertStoreroom: {
+    fontSize: 14,
+    color: "#64748b",
+    marginBottom: 2,
   },
   alertTime: {
     fontSize: 14,
     color: "#6b7280",
     minWidth: 60,
     textAlign: "right",
+    marginLeft: 8,
   },
   loadingText: {
     fontSize: 16,
