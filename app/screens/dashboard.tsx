@@ -9,6 +9,7 @@ import {
   StatusBar,
   Image,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useAuth } from "@/src/context/AuthContext";
 import { useRouter } from "expo-router";
@@ -234,7 +235,15 @@ export default function Dashboard() {
             {lastName || user.displayName || "User"} 👋
           </Text>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => {
+            Alert.alert("Logout", "Are you sure you want to logout?", [
+              { text: "Cancel", style: "cancel" },
+              { text: "Logout", onPress: logout },
+            ]);
+          }}
+        >
           <MaterialIcons name="logout" size={22} color="#64748b" />
         </TouchableOpacity>
       </View>
