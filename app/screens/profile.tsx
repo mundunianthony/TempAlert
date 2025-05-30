@@ -93,11 +93,12 @@ export default function Profile() {
         </TouchableOpacity>
       </ScrollView>
       <Navbar
-        onRefresh={() => {}} // No refresh on profile screen, or provide a handler if needed
-        onNavigateProfile={() => {}} // Already on profile, can be a no-op
+        onRefresh={() => {}}
+        onNavigateProfile={() => {}}
         onNavigateHome={() => router.replace("/screens/dashboard")}
         onNavigateAlerts={() => router.push("/screens/alerts")}
-        alerts={[]} // No alerts context here, or pass from props/context if available
+        alerts={[]}
+        activeTab="profile"
       />
     </View>
   );

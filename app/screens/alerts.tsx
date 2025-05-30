@@ -66,11 +66,12 @@ export default function Alerts() {
         ))}
       </ScrollView>
       <Navbar
-        onRefresh={() => {}} // or remove if not needed
+        onRefresh={() => {}}
         onNavigateProfile={() => router.push("/screens/profile")}
         onNavigateHome={() => router.replace("/screens/dashboard")}
         onNavigateAlerts={() => router.replace("/screens/alerts")}
         alerts={alerts}
+        activeTab="alerts"
       />
     </View>
   );

@@ -13,7 +13,12 @@ import {
 import { useAuth } from "@/src/context/AuthContext";
 import { useRouter } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
-import { Feather, FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
+import {
+  Feather,
+  FontAwesome,
+  MaterialIcons,
+  Ionicons,
+} from "@expo/vector-icons";
 import { getFirestore } from "@/src/lib/firebase";
 import { collection, onSnapshot, Timestamp } from "firebase/firestore";
 import Navbar from "@/src/components/Navbar";
@@ -154,35 +159,35 @@ export default function Dashboard() {
         icon: <Ionicons name="snow" size={24} color="#3b82f6" />,
         color: "#3b82f6", // Blue
         bgColor: "#dbeafe", // Light blue
-        label: "Too Cold"
+        label: "Too Cold",
       };
     } else if (temperature >= 25 && temperature <= 30) {
       return {
         icon: <Ionicons name="alert-circle" size={24} color="#f59e0b" />,
         color: "#f59e0b", // Amber
         bgColor: "#fef3c7", // Light amber
-        label: "Warning"
+        label: "Warning",
       };
     } else if (temperature >= 31 && temperature <= 40) {
       return {
         icon: <Ionicons name="flame" size={24} color="#f97316" />,
         color: "#f97316", // Orange
         bgColor: "#ffedd5", // Light orange
-        label: "Too Hot"
+        label: "Too Hot",
       };
     } else if (temperature > 40) {
       return {
         icon: <Ionicons name="warning" size={24} color="#ef4444" />,
         color: "#ef4444", // Red
         bgColor: "#fee2e2", // Light red
-        label: "Critical"
+        label: "Critical",
       };
     }
     return {
       icon: <Ionicons name="information-circle" size={24} color="#6b7280" />,
       color: "#6b7280", // Gray
       bgColor: "#f3f4f6", // Light gray
-      label: "Info"
+      label: "Info",
     };
   };
 
@@ -220,7 +225,7 @@ export default function Dashboard() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -240,7 +245,7 @@ export default function Dashboard() {
           <Text style={styles.loadingText}>Loading data...</Text>
         </View>
       ) : (
-        <ScrollView 
+        <ScrollView
           style={styles.scroll}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
@@ -252,13 +257,18 @@ export default function Dashboard() {
                 <Ionicons name="thermometer" size={24} color="#0891b2" />
               </View>
               <Text style={styles.summaryValue}>
-                {storerooms.length > 0 
-                  ? `${Math.round(storerooms.reduce((sum, room) => sum + room.temperature, 0) / storerooms.length)}°C` 
+                {storerooms.length > 0
+                  ? `${Math.round(
+                      storerooms.reduce(
+                        (sum, room) => sum + room.temperature,
+                        0
+                      ) / storerooms.length
+                    )}°C`
                   : "N/A"}
               </Text>
               <Text style={styles.summaryLabel}>Avg Temp</Text>
             </View>
-            
+
             <View style={[styles.summaryCard, styles.summaryCardSecondary]}>
               <View style={styles.summaryIconContainer}>
                 <Ionicons name="alert-circle" size={24} color="#f59e0b" />
@@ -266,7 +276,7 @@ export default function Dashboard() {
               <Text style={styles.summaryValue}>{alerts.length}</Text>
               <Text style={styles.summaryLabel}>Alerts</Text>
             </View>
-            
+
             <View style={[styles.summaryCard, styles.summaryCardTertiary]}>
               <View style={styles.summaryIconContainer}>
                 <Ionicons name="cube" size={24} color="#8b5cf6" />
@@ -279,11 +289,14 @@ export default function Dashboard() {
           {/* Storeroom Overview */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Storeroom Overview</Text>
-            <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
+            <TouchableOpacity
+              onPress={handleRefresh}
+              style={styles.refreshButton}
+            >
               <Ionicons name="refresh" size={18} color="#64748b" />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.card}>
             {storerooms.length === 0 ? (
               <Text style={styles.emptyStateText}>No storerooms available</Text>
@@ -294,7 +307,10 @@ export default function Dashboard() {
                   onPress={() =>
                     router.push({
                       pathname: "./storeroom-details",
-                      params: { storeroomId: room.id, storeroomName: room.name },
+                      params: {
+                        storeroomId: room.id,
+                        storeroomName: room.name,
+                      },
                     })
                   }
                   style={[
@@ -305,15 +321,22 @@ export default function Dashboard() {
                   <View style={styles.storeroomInfo}>
                     <Text style={styles.roomName}>{room.name}</Text>
                     <Text style={styles.lastUpdated}>
-                      Updated {timeAgo(room.lastUpdated?.toDate().toISOString() || "")}
+                      Updated{" "}
+                      {timeAgo(room.lastUpdated?.toDate().toISOString() || "")}
                     </Text>
                   </View>
-                  
+
                   <View style={styles.temperatureContainer}>
-                    <Text style={styles.temperatureValue}>{room.temperature}°C</Text>
-                    <View style={[styles.statusBadge, getStatusColor(room.status)]}>
+                    <Text style={styles.temperatureValue}>
+                      {room.temperature}°C
+                    </Text>
+                    <View
+                      style={[styles.statusBadge, getStatusColor(room.status)]}
+                    >
                       {getStatusIcon(room.status)}
-                      <Text style={[styles.statusText, getStatusColor(room.status)]}>
+                      <Text
+                        style={[styles.statusText, getStatusColor(room.status)]}
+                      >
                         {room.status}
                       </Text>
                     </View>
@@ -331,7 +354,7 @@ export default function Dashboard() {
               <Ionicons name="chevron-forward" size={16} color="#0891b2" />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.card}>
             {chartData.length > 0 ? (
               <LineChart
@@ -353,7 +376,8 @@ export default function Dashboard() {
                   backgroundGradientTo: "#ffffff",
                   decimalPlaces: 1,
                   color: (opacity = 1) => `rgba(8, 145, 178, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
+                  labelColor: (opacity = 1) =>
+                    `rgba(100, 116, 139, ${opacity})`,
                   style: {
                     borderRadius: 16,
                   },
@@ -398,13 +422,13 @@ export default function Dashboard() {
               </TouchableOpacity>
             )}
           </View>
-          
+
           <View style={[styles.card, { marginBottom: 100 }]}>
             {alerts.length > 0 ? (
               <>
                 {alertsToShow.map((alert, index) => {
                   const severity = getAlertSeverity(alert.temperature);
-                  
+
                   return (
                     <View
                       key={index}
@@ -413,35 +437,51 @@ export default function Dashboard() {
                         index < alertsToShow.length - 1 && styles.divider,
                       ]}
                     >
-                      <View style={[styles.alertIconContainer, { backgroundColor: severity.bgColor }]}>
+                      <View
+                        style={[
+                          styles.alertIconContainer,
+                          { backgroundColor: severity.bgColor },
+                        ]}
+                      >
                         {severity.icon}
                       </View>
                       <View style={styles.alertContent}>
                         <View style={styles.alertHeader}>
-                          <Text style={[styles.alertSeverity, { color: severity.color }]}>
+                          <Text
+                            style={[
+                              styles.alertSeverity,
+                              { color: severity.color },
+                            ]}
+                          >
                             {severity.label}
                           </Text>
-                          <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
+                          <Text style={styles.alertTime}>
+                            {timeAgo(alert.timestamp)}
+                          </Text>
                         </View>
-                        <Text style={styles.alertLocation}>{alert.storeroomName}</Text>
+                        <Text style={styles.alertLocation}>
+                          {alert.storeroomName}
+                        </Text>
                         <Text style={styles.alertMessage}>{alert.message}</Text>
                       </View>
                     </View>
                   );
                 })}
-                
+
                 {hasMoreAlerts && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.showMoreButton}
                     onPress={() => setExpandedAlerts(!expandedAlerts)}
                   >
                     <Text style={styles.showMoreText}>
-                      {expandedAlerts ? "Show Less" : `Show ${alerts.length - 3} More Alerts`}
+                      {expandedAlerts
+                        ? "Show Less"
+                        : `Show ${alerts.length - 3} More Alerts`}
                     </Text>
-                    <Ionicons 
-                      name={expandedAlerts ? "chevron-up" : "chevron-down"} 
-                      size={16} 
-                      color="#0891b2" 
+                    <Ionicons
+                      name={expandedAlerts ? "chevron-up" : "chevron-down"}
+                      size={16}
+                      color="#0891b2"
                     />
                   </TouchableOpacity>
                 )}
@@ -451,7 +491,8 @@ export default function Dashboard() {
                 <Ionicons name="checkmark-circle" size={48} color="#10b981" />
                 <Text style={styles.emptyAlertsTitle}>All Systems Normal</Text>
                 <Text style={styles.emptyAlertsText}>
-                  No active alerts at this time. All storerooms are operating within normal temperature ranges.
+                  No active alerts at this time. All storerooms are operating
+                  within normal temperature ranges.
                 </Text>
               </View>
             )}
@@ -466,15 +507,16 @@ export default function Dashboard() {
         onNavigateHome={() => router.replace("/screens/dashboard")}
         onNavigateAlerts={() => router.push("/screens/alerts")}
         alerts={alerts}
+        activeTab="home"
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: "#f8fafc" // Light slate background
+  container: {
+    flex: 1,
+    backgroundColor: "#f8fafc", // Light slate background
   },
   loadingContainer: {
     flex: 1,
