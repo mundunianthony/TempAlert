@@ -98,7 +98,7 @@ export default function Alerts() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={{ flex: 1 }}>
+      <View style={styles.outerContainer}>
         <ScrollView
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
@@ -117,7 +117,9 @@ export default function Alerts() {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.alertMessage}>{alert.message}</Text>
-                  <Text style={styles.alertStoreroom}>{alert.storeroomName}</Text>
+                  <Text style={styles.alertStoreroom}>
+                    {alert.storeroomName}
+                  </Text>
                 </View>
                 <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
               </View>
@@ -143,34 +145,50 @@ const styles = StyleSheet.create({
     backgroundColor: "#f3f4f6",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
+  outerContainer: {
+    flex: 1,
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 0,
+    paddingBottom: 0,
+  },
   container: {
     paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 90, // enough space for navbar
+    paddingTop: 36,
+    paddingBottom: 100, // enough space for navbar
     backgroundColor: "#f3f4f6",
     flexGrow: 1,
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 24,
+    marginBottom: 28,
     color: "#000",
     textAlign: "left",
+    paddingLeft: 2,
   },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   divider: {
-    borderBottomWidth: 1,
-    borderColor: "#e5e7eb",
+    borderBottomWidth: 0,
   },
   alertMessage: {
     fontSize: 16,
     color: "#000",
     marginBottom: 2,
+    fontWeight: "500",
   },
   alertStoreroom: {
     fontSize: 14,
@@ -183,6 +201,7 @@ const styles = StyleSheet.create({
     minWidth: 60,
     textAlign: "right",
     marginLeft: 8,
+    alignSelf: "flex-start",
   },
   loadingText: {
     fontSize: 16,
