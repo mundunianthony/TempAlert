@@ -21,7 +21,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function Profile() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const router = useRouter();
 
   const [displayName, setDisplayName] = useState(user?.displayName || "");
@@ -479,10 +479,7 @@ export default function Profile() {
                   {
                     text: "Logout",
                     onPress: () => {
-                      // Call logout function from auth context
-                      if (useAuth().logout) {
-                        useAuth().logout();
-                      }
+                      logout();
                     },
                   },
                 ]);
