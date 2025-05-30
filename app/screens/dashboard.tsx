@@ -464,6 +464,7 @@ export default function Dashboard() {
         onRefresh={handleRefresh}
         onNavigateProfile={() => router.push("/screens/profile")}
         onNavigateHome={() => router.replace("/screens/dashboard")}
+        onNavigateAlerts={() => router.push("/screens/alerts")}
         alerts={alerts}
       />
     </View>
