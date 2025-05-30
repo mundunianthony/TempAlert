@@ -153,7 +153,7 @@ export default function Login() {
             </Animated.View>
             
             <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Log in to monitor your storeroom temperatures</Text>
+            
 
             {error ? (
               <Animated.View 
