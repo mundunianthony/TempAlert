@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView, StyleSheet, SafeAreaView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getFirestore } from "@/src/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
+import Navbar from "@/src/components/Navbar"; // <-- import Navbar
 
 const database = getFirestore();
 
@@ -99,31 +100,47 @@ export default function StoreroomDetails() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
-        {storeroomName || "Storeroom"} Historical Alerts
-      </Text>
-      <ScrollView>
-        {alerts.length > 0 ? (
-          alerts.map((alert) => (
-            <View key={alert.id} style={styles.alertRow}>
-              <Text style={styles.alertMessage}>{alert.message}</Text>
-              <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
-            </View>
-          ))
-        ) : (
-          <Text style={styles.noAlerts}>No historical alerts found</Text>
-        )}
-      </ScrollView>
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>
+          {storeroomName || "Storeroom"} Historical Alerts
+        </Text>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 84 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {alerts.length > 0 ? (
+            alerts.map((alert) => (
+              <View key={alert.id} style={styles.alertRow}>
+                <Text style={styles.alertMessage}>{alert.message}</Text>
+                <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noAlerts}>No historical alerts found</Text>
+          )}
+        </ScrollView>
+        <Navbar
+          alerts={alerts}
+          activeTab="alerts"
+          onNavigateHome={() => router.replace("/screens/dashboard")} 
+          onNavigateAlerts={() => {}}
+          onNavigateProfile={() => router.replace("/screens/profile")}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f3f4f6",
+  },
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 16,
+    // Remove paddingTop, let SafeAreaView handle it
   },
   title: {
     fontSize: 20,
