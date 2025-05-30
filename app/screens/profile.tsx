@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useAuth } from "@/src/context/AuthContext";
 import { updatePassword, updateProfile, updateEmail } from "firebase/auth";
+import { reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import Navbar from "@/src/components/Navbar";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,10 +27,14 @@ export default function Profile() {
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [email, setEmail] = useState(user?.email || "");
   const [newPassword, setNewPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [repeatPassword, setRepeatPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [securityStep, setSecurityStep] = useState<"verify" | "set">("verify");
+  const [securityError, setSecurityError] = useState("");
 
   // Animation for success message
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -108,9 +113,11 @@ export default function Profile() {
 
       // Update password
       if (newPassword.length >= 6) {
-        await updatePassword(user, newPassword);
-        setNewPassword(""); // Clear password field after successful update
-        setPasswordStrength(0);
+        if (user) {
+          await updatePassword(user, newPassword);
+          setNewPassword(""); // Clear password field after successful update
+          setPasswordStrength(0);
+        }
       }
 
       // Show success message with animation
@@ -133,6 +140,67 @@ export default function Profile() {
     } catch (error: any) {
       console.error(error);
       Alert.alert("Error", error.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCurrentPassword = async () => {
+    setLoading(true);
+    setSecurityError("");
+    try {
+      if (!user?.email) throw new Error("No user email found.");
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword
+      );
+      await reauthenticateWithCredential(user, credential);
+      setSecurityStep("set");
+      setCurrentPassword("");
+    } catch (err: any) {
+      setSecurityError("Incorrect password. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    setSecurityError("");
+    if (newPassword.length < 6) {
+      setSecurityError("Password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== repeatPassword) {
+      setSecurityError("Passwords do not match.");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (user) {
+        await updatePassword(user, newPassword);
+        setNewPassword("");
+        setRepeatPassword("");
+        setPasswordStrength(0);
+        setSecurityStep("verify");
+        setSuccessMessage("Password updated successfully");
+        Animated.sequence([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.delay(2000),
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          setTimeout(() => setSuccessMessage(""), 300);
+        });
+      }
+    } catch (err: any) {
+      setSecurityError(err.message || "Failed to update password.");
     } finally {
       setLoading(false);
     }
@@ -217,69 +285,173 @@ export default function Profile() {
 
           <View style={styles.formSection}>
             <Text style={styles.sectionTitle}>Security</Text>
-
-            <Text style={styles.label}>New Password</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color="#64748b"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={[styles.input, styles.passwordInput]}
-                value={newPassword}
-                onChangeText={(text) => {
-                  setNewPassword(text);
-                  checkPasswordStrength(text);
-                }}
-                secureTextEntry={!showPassword}
-                placeholder="Leave blank to keep current password"
-                placeholderTextColor="#94a3b8"
-              />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color="#64748b"
-                />
-              </TouchableOpacity>
-            </View>
-
-            {newPassword ? (
-              <View style={styles.passwordStrengthContainer}>
-                <View style={styles.strengthBars}>
-                  {[1, 2, 3, 4, 5].map((level) => (
-                    <View
-                      key={level}
-                      style={[
-                        styles.strengthBar,
-                        {
-                          backgroundColor:
-                            level <= passwordStrength
-                              ? getPasswordStrengthColor()
-                              : "#e2e8f0",
-                        },
-                      ]}
+            {securityStep === "verify" ? (
+              <>
+                <Text style={styles.label}>Current Password</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color="#64748b"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    secureTextEntry={!showPassword}
+                    placeholder="Enter your current password"
+                    placeholderTextColor="#94a3b8"
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color="#64748b"
                     />
-                  ))}
+                  </TouchableOpacity>
                 </View>
-                <Text
-                  style={[
-                    styles.strengthText,
-                    { color: getPasswordStrengthColor() },
-                  ]}
+                {securityError ? (
+                  <Text
+                    style={{
+                      color: "#ef4444",
+                      fontSize: 12,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {securityError}
+                  </Text>
+                ) : null}
+                <TouchableOpacity
+                  style={[styles.button, loading && styles.buttonDisabled]}
+                  onPress={handleVerifyCurrentPassword}
+                  disabled={loading}
                 >
-                  {getPasswordStrengthLabel()}
-                </Text>
-              </View>
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.buttonText}>Next</Text>
+                  )}
+                </TouchableOpacity>
+              </>
             ) : (
-              <Text style={styles.passwordHint}>
-                Password must be at least 6 characters
-              </Text>
+              <>
+                <Text style={styles.label}>New Password</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color="#64748b"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    value={newPassword}
+                    onChangeText={(text) => {
+                      setNewPassword(text);
+                      checkPasswordStrength(text);
+                    }}
+                    secureTextEntry={!showPassword}
+                    placeholder="Enter new password"
+                    placeholderTextColor="#94a3b8"
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color="#64748b"
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.label}>Repeat New Password</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color="#64748b"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    value={repeatPassword}
+                    onChangeText={setRepeatPassword}
+                    secureTextEntry={!showPassword}
+                    placeholder="Repeat new password"
+                    placeholderTextColor="#94a3b8"
+                  />
+                </View>
+                {newPassword ? (
+                  <View style={styles.passwordStrengthContainer}>
+                    <View style={styles.strengthBars}>
+                      {[1, 2, 3, 4, 5].map((level) => (
+                        <View
+                          key={level}
+                          style={[
+                            styles.strengthBar,
+                            {
+                              backgroundColor:
+                                level <= passwordStrength
+                                  ? getPasswordStrengthColor()
+                                  : "#e2e8f0",
+                            },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                    <Text
+                      style={[
+                        styles.strengthText,
+                        { color: getPasswordStrengthColor() },
+                      ]}
+                    >
+                      {getPasswordStrengthLabel()}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.passwordHint}>
+                    Password must be at least 6 characters
+                  </Text>
+                )}
+                {securityError ? (
+                  <Text
+                    style={{
+                      color: "#ef4444",
+                      fontSize: 12,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {securityError}
+                  </Text>
+                ) : null}
+                <TouchableOpacity
+                  style={[styles.button, loading && styles.buttonDisabled]}
+                  onPress={handleUpdatePassword}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.buttonText}>Save Password</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ alignSelf: "flex-end", marginTop: 8 }}
+                  onPress={() => {
+                    setSecurityStep("verify");
+                    setNewPassword("");
+                    setRepeatPassword("");
+                    setSecurityError("");
+                  }}
+                >
+                  <Text style={{ color: "#0891b2", fontSize: 13 }}>Back</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
 
