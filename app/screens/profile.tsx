@@ -41,22 +41,22 @@ export default function Profile() {
     }
 
     let strength = 0;
-    
+
     // Length check
     if (password.length >= 8) strength += 1;
-    
+
     // Contains number
     if (/\d/.test(password)) strength += 1;
-    
+
     // Contains lowercase
     if (/[a-z]/.test(password)) strength += 1;
-    
+
     // Contains uppercase
     if (/[A-Z]/.test(password)) strength += 1;
-    
+
     // Contains special character
     if (/[^A-Za-z0-9]/.test(password)) strength += 1;
-    
+
     setPasswordStrength(strength);
   };
 
@@ -84,13 +84,16 @@ export default function Profile() {
     }
 
     if (newPassword && newPassword.length < 6) {
-      Alert.alert("Password Too Short", "Password must be at least 6 characters long.");
+      Alert.alert(
+        "Password Too Short",
+        "Password must be at least 6 characters long."
+      );
       return;
     }
 
     setLoading(true);
     setSuccessMessage("");
-    
+
     try {
       // Update display name
       if (displayName && displayName !== user.displayName) {
@@ -123,7 +126,7 @@ export default function Profile() {
           toValue: 0,
           duration: 300,
           useNativeDriver: true,
-        })
+        }),
       ]).start(() => {
         setTimeout(() => setSuccessMessage(""), 300);
       });
@@ -151,7 +154,9 @@ export default function Profile() {
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {displayName ? displayName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "U"}
+                {displayName
+                  ? displayName.charAt(0).toUpperCase()
+                  : user?.email?.charAt(0).toUpperCase() || "U"}
               </Text>
             </View>
             <Text style={styles.emailText}>{user?.email}</Text>
@@ -159,7 +164,9 @@ export default function Profile() {
 
           {/* Success Message */}
           {successMessage ? (
-            <Animated.View style={[styles.successContainer, { opacity: fadeAnim }]}>
+            <Animated.View
+              style={[styles.successContainer, { opacity: fadeAnim }]}
+            >
               <Ionicons name="checkmark-circle" size={20} color="#10b981" />
               <Text style={styles.successText}>{successMessage}</Text>
             </Animated.View>
@@ -168,10 +175,15 @@ export default function Profile() {
           {/* Form Section */}
           <View style={styles.formSection}>
             <Text style={styles.sectionTitle}>Personal Information</Text>
-            
+
             <Text style={styles.label}>Display Name</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color="#64748b" style={styles.inputIcon} />
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color="#64748b"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 value={displayName}
@@ -183,7 +195,12 @@ export default function Profile() {
 
             <Text style={styles.label}>Email Address</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color="#64748b"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 value={email}
@@ -192,16 +209,23 @@ export default function Profile() {
                 autoCapitalize="none"
                 placeholder="Enter your email"
                 placeholderTextColor="#94a3b8"
+                editable={false}
+                selectTextOnFocus={false}
               />
             </View>
           </View>
 
           <View style={styles.formSection}>
             <Text style={styles.sectionTitle}>Security</Text>
-            
+
             <Text style={styles.label}>New Password</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#64748b" style={styles.inputIcon} />
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color="#64748b"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={[styles.input, styles.passwordInput]}
                 value={newPassword}
@@ -213,44 +237,49 @@ export default function Profile() {
                 placeholder="Leave blank to keep current password"
                 placeholderTextColor="#94a3b8"
               />
-              <TouchableOpacity 
-                style={styles.eyeIcon} 
+              <TouchableOpacity
+                style={styles.eyeIcon}
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Ionicons 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={20} 
-                  color="#64748b" 
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#64748b"
                 />
               </TouchableOpacity>
             </View>
-            
+
             {newPassword ? (
               <View style={styles.passwordStrengthContainer}>
                 <View style={styles.strengthBars}>
                   {[1, 2, 3, 4, 5].map((level) => (
-                    <View 
+                    <View
                       key={level}
                       style={[
-                        styles.strengthBar, 
-                        { 
-                          backgroundColor: level <= passwordStrength 
-                            ? getPasswordStrengthColor() 
-                            : "#e2e8f0" 
-                        }
+                        styles.strengthBar,
+                        {
+                          backgroundColor:
+                            level <= passwordStrength
+                              ? getPasswordStrengthColor()
+                              : "#e2e8f0",
+                        },
                       ]}
                     />
                   ))}
                 </View>
-                <Text style={[
-                  styles.strengthText, 
-                  { color: getPasswordStrengthColor() }
-                ]}>
+                <Text
+                  style={[
+                    styles.strengthText,
+                    { color: getPasswordStrengthColor() },
+                  ]}
+                >
                   {getPasswordStrengthLabel()}
                 </Text>
               </View>
             ) : (
-              <Text style={styles.passwordHint}>Password must be at least 6 characters</Text>
+              <Text style={styles.passwordHint}>
+                Password must be at least 6 characters
+              </Text>
             )}
           </View>
 
@@ -265,30 +294,26 @@ export default function Profile() {
               <Text style={styles.buttonText}>Save Changes</Text>
             )}
           </TouchableOpacity>
-          
+
           <View style={styles.logoutContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.logoutButton}
               onPress={() => {
-                Alert.alert(
-                  "Logout",
-                  "Are you sure you want to logout?",
-                  [
-                    {
-                      text: "Cancel",
-                      style: "cancel"
-                    },
-                    {
-                      text: "Logout",
-                      onPress: () => {
-                        // Call logout function from auth context
-                        if (useAuth().logout) {
-                          useAuth().logout();
-                        }
+                Alert.alert("Logout", "Are you sure you want to logout?", [
+                  {
+                    text: "Cancel",
+                    style: "cancel",
+                  },
+                  {
+                    text: "Logout",
+                    onPress: () => {
+                      // Call logout function from auth context
+                      if (useAuth().logout) {
+                        useAuth().logout();
                       }
-                    }
-                  ]
-                );
+                    },
+                  },
+                ]);
               }}
             >
               <Ionicons name="log-out-outline" size={20} color="#ef4444" />
@@ -296,7 +321,7 @@ export default function Profile() {
             </TouchableOpacity>
           </View>
         </ScrollView>
-        
+
         <Navbar
           onRefresh={() => {}}
           onNavigateProfile={() => {}}
