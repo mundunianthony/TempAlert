@@ -277,8 +277,6 @@ export default function Dashboard() {
               </Text>
               <Text style={styles.summaryLabel}>Avg Temp</Text>
             </View>
-
-            {/* Alerts summary card now links to alerts screen */}
             <TouchableOpacity
               style={[styles.summaryCard, styles.summaryCardSecondary]}
               onPress={() => router.push("/screens/alerts")}
