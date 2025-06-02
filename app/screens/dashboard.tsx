@@ -278,13 +278,18 @@ export default function Dashboard() {
               <Text style={styles.summaryLabel}>Avg Temp</Text>
             </View>
 
-            <View style={[styles.summaryCard, styles.summaryCardSecondary]}>
+            {/* Alerts summary card now links to alerts screen */}
+            <TouchableOpacity
+              style={[styles.summaryCard, styles.summaryCardSecondary]}
+              onPress={() => router.push("/screens/alerts")}
+              activeOpacity={0.8}
+            >
               <View style={styles.summaryIconContainer}>
                 <Ionicons name="alert-circle" size={24} color="#f59e0b" />
               </View>
               <Text style={styles.summaryValue}>{alerts.length}</Text>
               <Text style={styles.summaryLabel}>Alerts</Text>
-            </View>
+            </TouchableOpacity>
 
             <View style={[styles.summaryCard, styles.summaryCardTertiary]}>
               <View style={styles.summaryIconContainer}>
@@ -425,7 +430,10 @@ export default function Dashboard() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Alerts</Text>
             {alerts.length > 0 && (
-              <TouchableOpacity style={styles.viewAllButton}>
+              <TouchableOpacity
+                style={styles.viewAllButton}
+                onPress={() => router.push("/screens/alerts")}
+              >
                 <Text style={styles.viewAllText}>View All</Text>
                 <Ionicons name="chevron-forward" size={16} color="#0891b2" />
               </TouchableOpacity>
