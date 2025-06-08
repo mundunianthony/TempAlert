@@ -36,3 +36,10 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Service account credentials
+**/service-account.json
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
