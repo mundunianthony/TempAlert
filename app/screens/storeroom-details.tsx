@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, StyleSheet, SafeAreaView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { getFirestore } from "@/src/lib/firebase";
+import { getFirestore } from "../../src/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
-import Navbar from "@/src/components/Navbar"; // <-- import Navbar
+import Navbar from "../../src/components/Navbar";
 
 const database = getFirestore();
 

@@ -11,11 +11,11 @@ import {
   ActivityIndicator,
   Animated,
 } from "react-native";
-import { useAuth } from "@/src/context/AuthContext";
+import { useAuth } from "../../src/context/AuthContext";
 import { useRouter } from "expo-router";
-import { getFirestore } from "@/src/lib/firebase";
+import { getFirestore } from "../../src/lib/firebase";
 import { collection, onSnapshot, Timestamp } from "firebase/firestore";
-import Navbar from "@/src/components/Navbar";
+import Navbar from "../../src/components/Navbar";
 import { Ionicons } from "@expo/vector-icons";
 
 const database = getFirestore();
@@ -29,7 +29,7 @@ interface Storeroom {
 }
 
 export default function Alerts() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const router = useRouter();
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -298,7 +298,13 @@ export default function Alerts() {
         <Navbar
           onRefresh={handleRefresh}
           onNavigateProfile={() => router.push("/screens/profile")}
-          onNavigateHome={() => router.replace("/screens/dashboard")}
+          onNavigateHome={() => {
+            if (isAdmin) {
+              router.replace("/screens/admin/dashboard");
+            } else {
+              router.replace("/screens/dashboard");
+            }
+          }}
           onNavigateAlerts={() => router.replace("/screens/alerts")}
           alerts={alerts}
           activeTab="alerts"

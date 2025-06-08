@@ -8,7 +8,7 @@ import {
   StyleSheet,
   ImageBackground,
 } from "react-native";
-import { authInstance } from "@/src/lib/firebase";
+import { authInstance } from "../../src/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/context/AuthContext";

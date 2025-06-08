@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useAuth } from "@/src/context/AuthContext";
+import { useAuth } from "../../src/context/AuthContext";
 import { useRouter } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
 import {
@@ -20,9 +20,9 @@ import {
   MaterialIcons,
   Ionicons,
 } from "@expo/vector-icons";
-import { getFirestore } from "@/src/lib/firebase";
+import { getFirestore } from "../../src/lib/firebase";
 import { collection, onSnapshot, Timestamp } from "firebase/firestore";
-import Navbar from "@/src/components/Navbar";
+import Navbar from "../../src/components/Navbar";
 
 const database = getFirestore();
 

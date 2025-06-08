@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { authInstance } from "@/src/lib/firebase"; // your initialized firebase auth
+import { authInstance } from "../lib/firebase"; // your initialized firebase auth
 import {
   User,
   onAuthStateChanged,
@@ -21,6 +21,7 @@ interface AuthContextProps {
   ) => Promise<void>;
   lastName: string | null;
   refreshUser: () => Promise<void>;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextProps>({
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextProps>({
   register: async () => {},
   lastName: null,
   refreshUser: async () => {},
+  isAdmin: false,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -38,11 +40,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastName, setLastName] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(authInstance, (u) => {
+    const unsubscribe = onAuthStateChanged(authInstance, async (u) => {
       setUser(u);
       setLastName(u?.displayName?.split(" ").slice(-1).join(" ") || null);
+      
+      if (u) {
+        // Check admin status from custom claims
+        const idTokenResult = await u.getIdTokenResult();
+        setIsAdmin(idTokenResult.claims.admin === true);
+      } else {
+        setIsAdmin(false);
+      }
+      
       setLoading(false);
     });
 
@@ -78,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, logout, register, lastName, refreshUser }}
+      value={{ user, loading, logout, register, lastName, refreshUser, isAdmin }}
     >
       {children}
     </AuthContext.Provider>

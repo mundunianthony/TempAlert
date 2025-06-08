@@ -13,7 +13,7 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
-import { authInstance } from "@/src/lib/firebase";
+import { authInstance } from "../src/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "expo-router";
 import { useAuth } from "../src/context/AuthContext";
@@ -33,7 +33,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -101,8 +101,17 @@ export default function Login() {
     setError("");
 
     try {
-      await signInWithEmailAndPassword(authInstance, email, password);
-      router.replace("/screens/dashboard");
+      const userCredential = await signInWithEmailAndPassword(authInstance, email, password);
+      // Get the ID token to check admin status
+      const idTokenResult = await userCredential.user.getIdTokenResult();
+      const isUserAdmin = idTokenResult.claims.admin === true;
+      
+      // Redirect based on admin status
+      if (isUserAdmin) {
+        router.replace("/screens/admin/dashboard");
+      } else {
+        router.replace("/screens/dashboard");
+      }
     } catch (err: any) {
       let errorMessage = "Login failed. Please check your credentials.";
       
@@ -324,7 +333,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 16,
     padding: 24,
-    backdropFilter: "blur(12px)",
+    // backdropFilter is not supported in React Native
   },
   errorBox: {
     flexDirection: "row",

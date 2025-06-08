@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { useState, useEffect, useRef } from "react";
 import { Link, useRouter } from "expo-router";
-import { useAuth } from "@/src/context/AuthContext";
+import { useAuth } from "../../src/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -387,7 +387,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 16,
     padding: 24,
-    backdropFilter: "blur(12px)",
   },
   nameRow: {
     flexDirection: "row",

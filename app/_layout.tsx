@@ -12,8 +12,11 @@ import { View, ActivityIndicator, Text } from "react-native";
 import "react-native-reanimated";
 
 // Custom components
-import { useColorScheme } from "@/src/hooks/useColorScheme";
-import { AuthProvider } from "@/src/context/AuthContext";
+// If you have a custom hook, ensure it exists at src/hooks/useColorScheme.ts
+// Otherwise, you can use the built-in hook from react-native:
+import { useColorScheme } from "react-native";
+// Update the import path below if your AuthContext is located elsewhere
+import { AuthProvider } from "../src/context/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -69,6 +72,7 @@ export default function RootLayout() {
           <Stack.Screen name="screens/alerts" />
           <Stack.Screen name="screens/index" />
           <Stack.Screen name="screens/login" />
+          <Stack.Screen name="screens/admin/dashboard" />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar

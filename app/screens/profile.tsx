@@ -13,15 +13,15 @@ import {
   ActivityIndicator,
   Animated,
 } from "react-native";
-import { useAuth } from "@/src/context/AuthContext";
+import { useAuth } from "../../src/context/AuthContext";
 import { updatePassword, updateProfile, updateEmail } from "firebase/auth";
 import { reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
-import Navbar from "@/src/components/Navbar";
+import Navbar from "../../src/components/Navbar";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function Profile() {
-  const { user, refreshUser, logout } = useAuth();
+  const { user, refreshUser, logout, isAdmin } = useAuth();
   const router = useRouter();
 
   const [displayName, setDisplayName] = useState(user?.displayName || "");
@@ -494,7 +494,13 @@ export default function Profile() {
         <Navbar
           onRefresh={() => {}}
           onNavigateProfile={() => {}}
-          onNavigateHome={() => router.replace("/screens/dashboard")}
+          onNavigateHome={() => {
+            if (isAdmin) {
+              router.replace("/screens/admin/dashboard");
+            } else {
+              router.replace("/screens/dashboard");
+            }
+          }}
           onNavigateAlerts={() => router.push("/screens/alerts")}
           alerts={[]}
           activeTab="profile"
