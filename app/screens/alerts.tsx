@@ -336,20 +336,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#0f172a", // Slate-900
+    color: "#0f172a", 
   },
   refreshButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#f1f5f9", // Slate-100
+    backgroundColor: "#f1f5f9",
     justifyContent: "center",
     alignItems: "center",
   },
   container: {
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 100, // enough space for navbar
+    paddingBottom: 100, 
     backgroundColor: "#f8fafc",
     flexGrow: 1,
   },
@@ -362,11 +362,11 @@ const styles = StyleSheet.create({
   alertCount: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#64748b", // Slate-500
+    color: "#64748b",
   },
   sortedByText: {
     fontSize: 12,
-    color: "#94a3b8", // Slate-400
+    color: "#94a3b8", 
     fontStyle: "italic",
   },
   alertCard: {
