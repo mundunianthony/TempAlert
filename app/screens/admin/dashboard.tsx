@@ -394,17 +394,8 @@ export default function AdminDashboard() {
                 <Text style={styles.emptyStateText}>No storerooms available</Text>
               ) : (
                 storerooms.map((room, index) => (
-                  <TouchableOpacity
+                  <View
                     key={room.id}
-                    onPress={() =>
-                      router.push({
-                        pathname: "./storeroom-details",
-                        params: {
-                          storeroomId: room.id,
-                          storeroomName: room.name,
-                        },
-                      })
-                    }
                     style={[
                       styles.storeroomItem,
                       index < storerooms.length - 1 && styles.divider,
@@ -433,7 +424,7 @@ export default function AdminDashboard() {
                         </Text>
                       </View>
                     </View>
-                  </TouchableOpacity>
+                  </View>
                 ))
               )}
             </View>
