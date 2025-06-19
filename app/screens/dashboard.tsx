@@ -20,11 +20,7 @@ import {
   MaterialIcons,
   Ionicons,
 } from "@expo/vector-icons";
-import { getFirestore } from "../../src/lib/firebase";
-import { collection, onSnapshot, Timestamp } from "firebase/firestore";
 import Navbar from "../../src/components/Navbar";
-
-const database = getFirestore();
 
 interface Storeroom {
   id: string;
@@ -57,35 +53,22 @@ export default function Dashboard() {
 
     setLoading(true);
 
-    const unsubscribeStorerooms = onSnapshot(
-      collection(database, "storerooms"),
-      (snapshot) => {
-        const rooms = snapshot.docs.map(
-          (doc) =>
-            ({
-              id: doc.id,
-              ...doc.data(),
-            } as Storeroom)
-        );
-        setStorerooms(rooms);
+    // Fetch storerooms from API
+    fetch('https://tempalert.onensensy.com/api/rooms', {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${user.token || ''}`,
+      },
+    })
+      .then(res => res.json())
+      .then(data => {
+        setStorerooms(data.data || []);
         setLoading(false);
-      }
-    );
-
-    const unsubscribeTemp = onSnapshot(
-      collection(database, "temperatureHistory/storeroom1/points"),
-      (snapshot) => {
-        const temps = snapshot.docs.map(
-          (doc) => doc.data() as TemperatureDataPoint
-        );
-        setChartData(temps.map((point) => point.value));
-      }
-    );
-
-    return () => {
-      unsubscribeStorerooms();
-      unsubscribeTemp();
-    };
+      })
+      .catch(err => {
+        setLoading(false);
+        // Optionally handle error
+      });
   }, [user, router, refreshKey]);
 
   const getStatusColor = (status: string) => {
@@ -232,7 +215,7 @@ export default function Dashboard() {
         <View>
           <Text style={styles.welcomeText}>Welcome back</Text>
           <Text style={styles.greeting}>
-            {lastName || user.displayName || "User"} 👋
+            {user.name || lastName || user.displayName || "User"} {'\u{1F44B}'}
           </Text>
         </View>
         <TouchableOpacity

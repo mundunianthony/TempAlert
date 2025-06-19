@@ -13,8 +13,6 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
-import { authInstance } from "../src/lib/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "expo-router";
 import { useAuth } from "../src/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,7 +31,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { user, isAdmin } = useAuth();
+  const { login, isAdmin } = useAuth();
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -85,48 +83,22 @@ export default function Login() {
   }, [error]);
 
   const handleLogin = async () => {
+    console.log('HANDLE LOGIN CLICKED');
     if (!email || !password) {
-      setError("Please fill in both email and password fields.");
+      setError("Please fill in both fields.");
       return;
     }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-
     setLoading(true);
     setError("");
-
     try {
-      const userCredential = await signInWithEmailAndPassword(authInstance, email, password);
-      // Get the ID token to check admin status
-      const idTokenResult = await userCredential.user.getIdTokenResult();
-      const isUserAdmin = idTokenResult.claims.admin === true;
-      
-      // Redirect based on admin status
-      if (isUserAdmin) {
+      await login(email, password);
+      if (isAdmin) {
         router.replace("/screens/admin/dashboard");
       } else {
         router.replace("/screens/dashboard");
       }
     } catch (err: any) {
-      let errorMessage = "Login failed. Please check your credentials.";
-      
-      // More user-friendly error messages
-      if (err.code === "auth/invalid-email") {
-        errorMessage = "Please enter a valid email address.";
-      } else if (err.code === "auth/user-not-found") {
-        errorMessage = "No account found with this email. Please sign up.";
-      } else if (err.code === "auth/wrong-password") {
-        errorMessage = "Incorrect password. Please try again.";
-      } else if (err.code === "auth/too-many-requests") {
-        errorMessage = "Too many failed login attempts. Please try again later.";
-      }
-      
-      setError(errorMessage);
+      setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -217,13 +189,8 @@ export default function Login() {
                   <TouchableOpacity
                     style={styles.eyeIcon}
                     onPress={() => setShowPassword(!showPassword)}
-                    accessibilityLabel={showPassword ? "Hide password" : "Show password"}
                   >
-                    <Ionicons
-                      name={showPassword ? "eye-off-outline" : "eye-outline"}
-                      size={20}
-                      color="#64748b"
-                    />
+                    <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#64748b" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -231,7 +198,6 @@ export default function Login() {
               <TouchableOpacity
                 onPress={() => router.push("/screens/forgot-password")}
                 style={styles.forgotPassword}
-                accessibilityLabel="Forgot password"
               >
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
@@ -240,15 +206,11 @@ export default function Login() {
                 onPress={handleLogin}
                 style={[styles.button, loading && styles.buttonDisabled]}
                 disabled={loading}
-                accessibilityLabel="Log in"
               >
                 {loading ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
+                  <ActivityIndicator color="#fff" />
                 ) : (
-                  <>
-                    <Text style={styles.buttonText}>Log In</Text>
-                    <Ionicons name="log-in-outline" size={20} color="#ffffff" />
-                  </>
+                  <Text style={styles.buttonText}>Login</Text>
                 )}
               </TouchableOpacity>
 
@@ -258,17 +220,15 @@ export default function Login() {
                 <View style={styles.dividerLine} />
               </View>
 
-              <View style={styles.signupContainer}>
+              <TouchableOpacity
+                onPress={() => router.push("/screens/signup")}
+                style={styles.signup}
+              >
                 <Text style={styles.signupText}>
                   Don't have an account?{" "}
+                  <Text style={styles.signupLink}>Sign up</Text>
                 </Text>
-                <TouchableOpacity 
-                  onPress={() => router.push("/screens/signup")}
-                  accessibilityLabel="Sign up"
-                >
-                  <Text style={styles.signupLink}>Sign Up</Text>
-                </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -437,7 +397,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 12,
   },
-  signupContainer: {
+  signup: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",

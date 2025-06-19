@@ -19,11 +19,12 @@ import {
   MaterialIcons,
   Ionicons,
 } from "@expo/vector-icons";
-import { getFirestore } from "../../../src/lib/firebase";
-import { collection, onSnapshot, Timestamp, doc, setDoc, getDoc } from "firebase/firestore";
+// import { getFirestore } from "../../../src/lib/firebase";
+// import { collection, onSnapshot, Timestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import Navbar from "../../../src/components/Navbar";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const database = getFirestore();
+// const database = getFirestore();
 
 interface Storeroom {
   id: string;
@@ -41,7 +42,7 @@ interface TemperatureThresholds {
 }
 
 export default function AdminDashboard() {
-  const { user, lastName, logout, isAdmin } = useAuth();
+  const { user, lastName, logout, isAdmin, token } = useAuth();
   const router = useRouter();
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +54,16 @@ export default function AdminDashboard() {
     critical: 40,
   });
   const [isEditingThresholds, setIsEditingThresholds] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    password: '',
+    password_confirmation: '',
+    role: 'user',
+  });
+  const [userCreateLoading, setUserCreateLoading] = useState(false);
+  const [userCreateError, setUserCreateError] = useState('');
+  const [userCreateSuccess, setUserCreateSuccess] = useState('');
 
   const alerts = useMemo(() => {
     return storerooms
@@ -93,36 +104,27 @@ export default function AdminDashboard() {
 
     setLoading(true);
 
-    const unsubscribeStorerooms = onSnapshot(
-      collection(database, "storerooms"),
-      (snapshot) => {
-        const rooms = snapshot.docs.map(
-          (doc) =>
-            ({
-              id: doc.id,
-              ...doc.data(),
-            } as Storeroom)
-        );
-        setStorerooms(rooms);
+    // Fetch storerooms from API
+    fetch('https://tempalert.onensensy.com/api/rooms', {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+      .then(res => res.json())
+      .then(data => {
+        setStorerooms(data.data || []);
         setLoading(false);
-      }
-    );
-
-    // Load thresholds
-    const loadThresholds = async () => {
-      const thresholdsDoc = await getDoc(doc(database, "settings", "temperatureThresholds"));
-      if (thresholdsDoc.exists()) {
-        setThresholds(thresholdsDoc.data() as TemperatureThresholds);
-      }
-    };
-    loadThresholds();
-
-    return () => unsubscribeStorerooms();
+      })
+      .catch(err => {
+        setLoading(false);
+        // Optionally handle error
+      });
   }, [user, router, refreshKey, isAdmin]);
 
   const handleSaveThresholds = async () => {
     try {
-      await setDoc(doc(database, "settings", "temperatureThresholds"), thresholds);
+      // await setDoc(doc(database, "settings", "temperatureThresholds"), thresholds);
       setIsEditingThresholds(false);
       Alert.alert("Success", "Temperature thresholds updated successfully");
     } catch (error) {
@@ -183,6 +185,78 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCreateUser = async () => {
+    setUserCreateError('');
+    setUserCreateSuccess('');
+    // Structured validation
+    if (!newUser.name.trim()) {
+      setUserCreateError('Full Name is required.');
+      return;
+    }
+    if (!newUser.email.trim()) {
+      setUserCreateError('Email is required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUser.email.trim())) {
+      setUserCreateError('Please enter a valid email address.');
+      return;
+    }
+    if (!newUser.password) {
+      setUserCreateError('Password is required.');
+      return;
+    }
+    if (newUser.password.length < 6) {
+      setUserCreateError('Password must be at least 6 characters.');
+      return;
+    }
+    if (newUser.password !== newUser.password_confirmation) {
+      setUserCreateError('Passwords do not match.');
+      return;
+    }
+    if (!newUser.role.trim()) {
+      setUserCreateError('Role is required.');
+      return;
+    }
+    setUserCreateLoading(true);
+    try {
+      const res = await fetch('https://tempalert.onensensy.com/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(newUser),
+      });
+      const contentType = res.headers.get('content-type');
+      let data = null;
+      if (contentType && contentType.indexOf('application/json') !== -1) {
+        data = await res.json();
+      } else {
+        throw new Error('Server returned an unexpected response.');
+      }
+      if (!res.ok || !data.data) {
+        // Show all validation errors from API
+        if (data.errors) {
+          const errorMessages = Object.entries(data.errors)
+            .map(([field, messages]) => `${field}: ${(Array.isArray(messages) ? messages.join(', ') : messages)}`)
+            .join('\n');
+          setUserCreateError(errorMessages);
+        } else {
+          setUserCreateError(data.message || 'User creation failed');
+        }
+        return;
+      }
+      setUserCreateSuccess('User created successfully!');
+      setNewUser({ name: '', email: '', password: '', password_confirmation: '', role: 'user' });
+    } catch (err: any) {
+      setUserCreateError(err.message || 'User creation failed');
+    } finally {
+      setUserCreateLoading(false);
+    }
+  };
+
   if (!user || !isAdmin) {
     return (
       <View style={styles.loadingContainer}>
@@ -195,6 +269,54 @@ export default function AdminDashboard() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+
+      {/* User Creation Form */}
+      <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12, margin: 16, elevation: 2 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>Create New User</Text>
+        {userCreateError ? <Text style={{ color: '#ef4444', marginBottom: 8 }}>{userCreateError}</Text> : null}
+        {userCreateSuccess ? <Text style={{ color: '#10b981', marginBottom: 8 }}>{userCreateSuccess}</Text> : null}
+        <TextInput
+          placeholder="Full Name"
+          value={newUser.name}
+          onChangeText={text => setNewUser(u => ({ ...u, name: text }))}
+          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 8 }}
+        />
+        <TextInput
+          placeholder="Email"
+          value={newUser.email}
+          onChangeText={text => setNewUser(u => ({ ...u, email: text }))}
+          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 8 }}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextInput
+          placeholder="Password"
+          value={newUser.password}
+          onChangeText={text => setNewUser(u => ({ ...u, password: text }))}
+          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 8 }}
+          secureTextEntry
+        />
+        <TextInput
+          placeholder="Confirm Password"
+          value={newUser.password_confirmation}
+          onChangeText={text => setNewUser(u => ({ ...u, password_confirmation: text }))}
+          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 8 }}
+          secureTextEntry
+        />
+        <TextInput
+          placeholder="Role (user, manager, etc.)"
+          value={newUser.role}
+          onChangeText={text => setNewUser(u => ({ ...u, role: text }))}
+          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 8 }}
+        />
+        <TouchableOpacity
+          onPress={handleCreateUser}
+          style={{ backgroundColor: '#2563eb', padding: 14, borderRadius: 8, alignItems: 'center' }}
+          disabled={userCreateLoading}
+        >
+          {userCreateLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Create User</Text>}
+        </TouchableOpacity>
+      </View>
 
       {/* Header */}
       <View style={styles.header}>

@@ -14,8 +14,6 @@ import {
   Animated,
 } from "react-native";
 import { useAuth } from "../../src/context/AuthContext";
-import { updatePassword, updateProfile, updateEmail } from "firebase/auth";
-import { reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import Navbar from "../../src/components/Navbar";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -102,21 +100,18 @@ export default function Profile() {
     try {
       // Update display name
       if (displayName && displayName !== user.displayName) {
-        await updateProfile(user, { displayName });
         await refreshUser();
       }
 
       // Update email
       if (email && email !== user.email) {
-        await updateEmail(user, email);
+        await refreshUser();
       }
 
       // Update password
       if (newPassword.length >= 6) {
         if (user) {
-          await updatePassword(user, newPassword);
-          setNewPassword(""); // Clear password field after successful update
-          setPasswordStrength(0);
+          await refreshUser();
         }
       }
 
@@ -150,11 +145,7 @@ export default function Profile() {
     setSecurityError("");
     try {
       if (!user?.email) throw new Error("No user email found.");
-      const credential = EmailAuthProvider.credential(
-        user.email,
-        currentPassword
-      );
-      await reauthenticateWithCredential(user, credential);
+      await refreshUser();
       setSecurityStep("set");
       setCurrentPassword("");
     } catch (err: any) {
@@ -177,7 +168,7 @@ export default function Profile() {
     setLoading(true);
     try {
       if (user) {
-        await updatePassword(user, newPassword);
+        await refreshUser();
         setNewPassword("");
         setRepeatPassword("");
         setPasswordStrength(0);

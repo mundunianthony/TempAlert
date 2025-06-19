@@ -8,8 +8,6 @@ import {
   StyleSheet,
   ImageBackground,
 } from "react-native";
-import { authInstance } from "../../src/lib/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/context/AuthContext";
 
@@ -24,9 +22,10 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
+  const { login, user, isAdmin } = useAuth();
 
   const handleLogin = async () => {
+    console.log('HANDLE LOGIN CLICKED');
     if (!email || !password) {
       setError("Please fill in both fields.");
       return;
@@ -36,10 +35,14 @@ export default function Login() {
     setError("");
 
     try {
-      await signInWithEmailAndPassword(authInstance, email, password);
-      router.replace("/screens/dashboard");
+      await login(email, password);
+      if (isAdmin) {
+        router.replace("/screens/admin/dashboard");
+      } else {
+        router.replace("/screens/dashboard");
+      }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -200,13 +203,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   signup: {
-    marginTop: 24,
+    marginTop: 16,
   },
   signupText: {
-    color: "#ccc",
+    color: "#fff",
+    fontSize: 14,
   },
   signupLink: {
-    color: "#fff",
+    color: "#93c5fd",
     fontWeight: "bold",
   },
 });

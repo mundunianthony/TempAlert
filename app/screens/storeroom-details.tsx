@@ -1,11 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, StyleSheet, SafeAreaView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { getFirestore } from "../../src/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
 import Navbar from "../../src/components/Navbar";
-
-const database = getFirestore();
 
 interface TemperatureDataPoint {
   id: string;
@@ -26,37 +22,31 @@ export default function StoreroomDetails() {
   useEffect(() => {
     if (!storeroomId) return;
 
-    const unsubscribe = onSnapshot(
-      collection(database, `temperatureHistory/${storeroomId}/points`),
-      (snapshot) => {
-        const points = snapshot.docs.map(
-          (doc) =>
-            ({
-              id: doc.id,
-              ...doc.data(),
-            } as TemperatureDataPoint)
-        );
-
+    // Fetch alert logs for this storeroom
+    fetch(`https://tempalert.onensensy.com/api/alert-logs?options[room_id]=${storeroomId}`)
+      .then(res => res.json())
+      .then(data => {
+        const points = (data.data || []).map((point: any) => ({
+          id: point.id,
+          value: point.temperature_value,
+          timestamp: point.triggered_at,
+        }));
         const filteredPoints = points.filter(
           (point) => point.value <= 15 || point.value >= 25
         );
-
         const sortedPoints = filteredPoints.sort(
-          (a, b) =>
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
-
         const historicalAlerts = sortedPoints.map((point) => ({
           id: point.id,
           message: getAlertMessage(point.value, storeroomName || "Storeroom"),
           timestamp: point.timestamp,
         }));
-
         setAlerts(historicalAlerts);
-      }
-    );
-
-    return () => unsubscribe();
+      })
+      .catch(err => {
+        // Optionally handle error
+      });
   }, [storeroomId, storeroomName]);
 
   const getAlertMessage = (temperature: number, storeroomName: string) => {

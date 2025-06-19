@@ -13,12 +13,8 @@ import {
 } from "react-native";
 import { useAuth } from "../../src/context/AuthContext";
 import { useRouter } from "expo-router";
-import { getFirestore } from "../../src/lib/firebase";
-import { collection, onSnapshot, Timestamp } from "firebase/firestore";
 import Navbar from "../../src/components/Navbar";
 import { Ionicons } from "@expo/vector-icons";
-
-const database = getFirestore();
 
 interface Storeroom {
   id: string;
@@ -45,23 +41,24 @@ export default function Alerts() {
 
     setLoading(true);
 
-    const unsubscribeStorerooms = onSnapshot(
-      collection(database, "storerooms"),
-      (snapshot) => {
-        const rooms = snapshot.docs.map(
-          (doc) =>
-            ({
-              id: doc.id,
-              ...doc.data(),
-            } as Storeroom)
-        );
-        setStorerooms(rooms);
+    // Fetch storerooms from API
+    fetch('https://tempalert.onensensy.com/api/rooms', {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${user.token || ''}`,
+      },
+    })
+      .then(res => res.json())
+      .then(data => {
+        setStorerooms(data.data || []);
         setLoading(false);
         setRefreshing(false);
-      }
-    );
-
-    return () => unsubscribeStorerooms();
+      })
+      .catch(err => {
+        setLoading(false);
+        setRefreshing(false);
+        // Optionally handle error
+      });
   }, [user, router, refreshKey]);
 
   const getAlertMessage = (temperature: number, storeroomName: string) => {

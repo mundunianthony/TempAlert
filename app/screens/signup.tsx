@@ -131,9 +131,8 @@ export default function SignUpScreen() {
 
     try {
       setLoading(true);
-      // Note: register expects (email, password, firstName, lastName)
       await register(email, password, firstName, lastName);
-      router.replace("/");
+      router.replace("/screens/dashboard");
     } catch (err) {
       Alert.alert(
         "Signup Error",
