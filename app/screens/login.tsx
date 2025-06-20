@@ -86,13 +86,6 @@ export default function Login() {
         </View>
 
         <TouchableOpacity
-          onPress={() => router.push("/screens/forgot-password")}
-          style={styles.forgotPassword}
-        >
-          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           onPress={handleLogin}
           style={[styles.button, loading && styles.buttonDisabled]}
           disabled={loading}
@@ -102,16 +95,6 @@ export default function Login() {
           ) : (
             <Text style={styles.buttonText}>Login</Text>
           )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => router.push("/screens/signup")}
-          style={styles.signup}
-        >
-          <Text style={styles.signupText}>
-            Don't have an account?{" "}
-            <Text style={styles.signupLink}>Sign up</Text>
-          </Text>
         </TouchableOpacity>
       </View>
     </ImageBackground>
@@ -179,14 +162,6 @@ const styles = StyleSheet.create({
     color: "#93c5fd",
     fontWeight: "bold",
   },
-  forgotPassword: {
-    alignSelf: "flex-end",
-    marginBottom: 12,
-  },
-  forgotPasswordText: {
-    color: "#93c5fd",
-    fontSize: 14,
-  },
   button: {
     width: "100%",
     backgroundColor: "#2563eb",
@@ -201,16 +176,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
-  },
-  signup: {
-    marginTop: 16,
-  },
-  signupText: {
-    color: "#fff",
-    fontSize: 14,
-  },
-  signupLink: {
-    color: "#93c5fd",
-    fontWeight: "bold",
   },
 });

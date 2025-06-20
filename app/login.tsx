@@ -196,13 +196,6 @@ export default function Login() {
               </View>
 
               <TouchableOpacity
-                onPress={() => router.push("/screens/forgot-password")}
-                style={styles.forgotPassword}
-              >
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
                 onPress={handleLogin}
                 style={[styles.button, loading && styles.buttonDisabled]}
                 disabled={loading}
@@ -212,22 +205,6 @@ export default function Login() {
                 ) : (
                   <Text style={styles.buttonText}>Login</Text>
                 )}
-              </TouchableOpacity>
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <TouchableOpacity
-                onPress={() => router.push("/screens/signup")}
-                style={styles.signup}
-              >
-                <Text style={styles.signupText}>
-                  Don't have an account?{" "}
-                  <Text style={styles.signupLink}>Sign up</Text>
-                </Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -347,16 +324,6 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     padding: 8,
-  },
-  forgotPassword: {
-    alignSelf: "flex-end",
-    marginBottom: 24,
-    padding: 4, // Larger touch target
-  },
-  forgotPasswordText: {
-    color: "#0ea5e9", // Sky-500
-    fontSize: 14,
-    fontWeight: "500",
   },
   button: {
     backgroundColor: "#0891b2", // Cyan-600

@@ -65,8 +65,6 @@ export default function RootLayout() {
           initialRouteName="login"
         >
           <Stack.Screen name="login" />
-          <Stack.Screen name="screens/signup" />
-          <Stack.Screen name="screens/forgot-password" />
           <Stack.Screen name="screens/dashboard" />
           <Stack.Screen name="screens/profile" />
           <Stack.Screen name="screens/alerts" />
