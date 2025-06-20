@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { useAuth } from "../../src/context/AuthContext";
 import { useRouter } from "expo-router";
-import { LineChart } from "react-native-chart-kit";
 import {
   Feather,
   FontAwesome,
@@ -39,7 +38,6 @@ export default function Dashboard() {
   const { user, lastName, logout } = useAuth();
   const router = useRouter();
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
-  const [chartData, setChartData] = useState<number[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [expandedAlerts, setExpandedAlerts] = useState(false);
@@ -341,72 +339,6 @@ export default function Dashboard() {
             )}
           </View>
 
-          {/* Temperature Trends */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Temperature Trends</Text>
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All</Text>
-              <Ionicons name="chevron-forward" size={16} color="#0891b2" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.card}>
-            {chartData.length > 0 ? (
-              <LineChart
-                data={{
-                  labels: chartData.map((_, index) => `${index * 5}m`),
-                  datasets: [
-                    {
-                      data: chartData,
-                      color: (opacity = 1) => `rgba(8, 145, 178, ${opacity})`, // Cyan color
-                      strokeWidth: 2,
-                    },
-                  ],
-                }}
-                width={screenWidth - 48}
-                height={180}
-                chartConfig={{
-                  backgroundColor: "#ffffff",
-                  backgroundGradientFrom: "#ffffff",
-                  backgroundGradientTo: "#ffffff",
-                  decimalPlaces: 1,
-                  color: (opacity = 1) => `rgba(8, 145, 178, ${opacity})`,
-                  labelColor: (opacity = 1) =>
-                    `rgba(100, 116, 139, ${opacity})`,
-                  style: {
-                    borderRadius: 16,
-                  },
-                  propsForDots: {
-                    r: "4",
-                    strokeWidth: "2",
-                    stroke: "#0891b2",
-                  },
-                  propsForBackgroundLines: {
-                    strokeDasharray: "", // Solid lines
-                    stroke: "#e2e8f0",
-                    strokeWidth: 1,
-                  },
-                }}
-                style={styles.chart}
-                bezier
-                withInnerLines={true}
-                withOuterLines={false}
-                withHorizontalLines={true}
-                withVerticalLines={false}
-                withHorizontalLabels={true}
-                withVerticalLabels={true}
-                fromZero={false}
-                yAxisSuffix="°C"
-                yAxisInterval={5}
-              />
-            ) : (
-              <View style={styles.chartPlaceholder}>
-                <ActivityIndicator size="small" color="#0891b2" />
-                <Text style={styles.loadingText}>Loading chart data...</Text>
-              </View>
-            )}
-          </View>
-
           {/* Alerts Section */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Alerts</Text>
@@ -699,15 +631,6 @@ const styles = StyleSheet.create({
   divider: {
     borderBottomWidth: 1,
     borderBottomColor: "#f1f5f9", // Slate-100
-  },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
-  },
-  chartPlaceholder: {
-    height: 180,
-    justifyContent: "center",
-    alignItems: "center",
   },
   alertItem: {
     flexDirection: "row",
