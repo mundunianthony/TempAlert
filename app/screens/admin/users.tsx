@@ -10,6 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -290,6 +291,8 @@ export default function UsersScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+      
       <View style={styles.header}>
         <Text style={styles.title}>Manage Users</Text>
         <TouchableOpacity
@@ -301,7 +304,11 @@ export default function UsersScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {users.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="people-outline" size={64} color="#9ca3af" />
@@ -557,7 +564,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -582,7 +591,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 20,
+    paddingBottom: 100, // Add padding to account for the navbar
   },
   emptyState: {
     flex: 1,

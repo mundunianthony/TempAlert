@@ -10,6 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -55,7 +56,6 @@ export default function RoomsScreen() {
   const [thresholdLoading, setThresholdLoading] = useState(false);
 
   const [newRoom, setNewRoom] = useState({
-    farm_id: '',
     name: '',
     description: '',
   });
@@ -64,6 +64,8 @@ export default function RoomsScreen() {
     min_temperature: '',
     max_temperature: '',
   });
+
+  const [createWithThreshold, setCreateWithThreshold] = useState(false);
 
   useEffect(() => {
     if (!user || !isAdmin) {
@@ -114,14 +116,30 @@ export default function RoomsScreen() {
   };
 
   const handleCreateRoom = async () => {
-    if (!newRoom.farm_id || !newRoom.name.trim()) {
+    if (!newRoom.name.trim()) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
+    if (createWithThreshold) {
+      if (!newThreshold.min_temperature || !newThreshold.max_temperature) {
+        Alert.alert('Error', 'Please fill in all threshold fields');
+        return;
+      }
+
+      const minTemp = parseFloat(newThreshold.min_temperature);
+      const maxTemp = parseFloat(newThreshold.max_temperature);
+
+      if (minTemp >= maxTemp) {
+        Alert.alert('Error', 'Minimum temperature must be less than maximum temperature');
+        return;
+      }
+    }
+
     setCreateLoading(true);
     try {
-      const response = await fetch('https://tempalert.onensensy.com/api/rooms', {
+      // Create room first
+      const roomResponse = await fetch('https://tempalert.onensensy.com/api/rooms', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,20 +147,44 @@ export default function RoomsScreen() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          farm_id: parseInt(newRoom.farm_id),
           name: newRoom.name.trim(),
           description: newRoom.description.trim(),
         }),
       });
 
-      const data = await response.json();
-      if (response.ok && data.data) {
+      const roomData = await roomResponse.json();
+      if (roomResponse.ok && roomData.data) {
+        const createdRoom = roomData.data;
+        
+        // Create threshold if requested
+        if (createWithThreshold) {
+          const thresholdResponse = await fetch('https://tempalert.onensensy.com/api/thresholds', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              room_id: createdRoom.id,
+              min_temperature: parseFloat(newThreshold.min_temperature),
+              max_temperature: parseFloat(newThreshold.max_temperature),
+            }),
+          });
+
+          if (!thresholdResponse.ok) {
+            console.warn('Room created but threshold creation failed');
+          }
+        }
+
         Alert.alert('Success', 'Room created successfully');
         setShowCreateModal(false);
-        setNewRoom({ farm_id: '', name: '', description: '' });
+        setNewRoom({ name: '', description: '' });
+        setNewThreshold({ min_temperature: '', max_temperature: '' });
+        setCreateWithThreshold(false);
         fetchData();
       } else {
-        Alert.alert('Error', data.message || 'Failed to create room');
+        Alert.alert('Error', roomData.message || 'Failed to create room');
       }
     } catch (error) {
       console.error('Error creating room:', error);
@@ -255,6 +297,8 @@ export default function RoomsScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+      
       <View style={styles.header}>
         <Text style={styles.title}>Manage Rooms</Text>
         <TouchableOpacity
@@ -266,7 +310,11 @@ export default function RoomsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {rooms.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="business-outline" size={64} color="#9ca3af" />
@@ -352,29 +400,6 @@ export default function RoomsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Farm *</Text>
-              <View style={styles.pickerContainer}>
-                <TextInput
-                  style={styles.pickerInput}
-                  placeholder="Select farm"
-                  value={farms.find(f => f.id === parseInt(newRoom.farm_id))?.farm_name || ''}
-                  editable={false}
-                />
-                <ScrollView style={styles.pickerOptions}>
-                  {farms.map((farm) => (
-                    <TouchableOpacity
-                      key={farm.id}
-                      style={styles.pickerOption}
-                      onPress={() => setNewRoom({ ...newRoom, farm_id: farm.id.toString() })}
-                    >
-                      <Text style={styles.pickerOptionText}>{farm.farm_name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </View>
-
-            <View style={styles.formGroup}>
               <Text style={styles.label}>Room Name *</Text>
               <TextInput
                 style={styles.input}
@@ -395,6 +420,44 @@ export default function RoomsScreen() {
                 numberOfLines={3}
               />
             </View>
+
+            <View style={styles.formGroup}>
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setCreateWithThreshold(!createWithThreshold)}
+              >
+                <View style={[styles.checkbox, createWithThreshold && styles.checkboxChecked]}>
+                  {createWithThreshold && <Ionicons name="checkmark" size={16} color="#fff" />}
+                </View>
+                <Text style={styles.checkboxLabel}>Set temperature thresholds for this room</Text>
+              </TouchableOpacity>
+            </View>
+
+            {createWithThreshold && (
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Minimum Temperature (°C) *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g., 10"
+                    value={newThreshold.min_temperature}
+                    onChangeText={(text) => setNewThreshold({ ...newThreshold, min_temperature: text })}
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Maximum Temperature (°C) *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g., 30"
+                    value={newThreshold.max_temperature}
+                    onChangeText={(text) => setNewThreshold({ ...newThreshold, max_temperature: text })}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </>
+            )}
 
             <TouchableOpacity
               style={[styles.submitButton, createLoading && styles.submitButtonDisabled]}
@@ -491,7 +554,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -516,7 +581,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 20,
+    paddingBottom: 100, // Add padding to account for the navbar
   },
   emptyState: {
     flex: 1,
@@ -653,38 +721,6 @@ const styles = StyleSheet.create({
     height: 80,
     textAlignVertical: 'top',
   },
-  pickerContainer: {
-    position: 'relative',
-  },
-  pickerInput: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#f9fafb',
-  },
-  pickerOptions: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    maxHeight: 150,
-    zIndex: 1000,
-  },
-  pickerOption: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  pickerOptionText: {
-    fontSize: 16,
-    color: '#374151',
-  },
   submitButton: {
     backgroundColor: '#3b82f6',
     padding: 16,
@@ -699,5 +735,26 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#3b82f6',
+  },
+  checkboxLabel: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#374151',
   },
 }); 

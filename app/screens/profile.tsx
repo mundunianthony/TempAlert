@@ -25,57 +25,11 @@ export default function Profile() {
 
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [email, setEmail] = useState(user?.email || "");
-  const [newPassword, setNewPassword] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [repeatPassword, setRepeatPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [passwordStrength, setPasswordStrength] = useState(0);
-  const [securityError, setSecurityError] = useState("");
 
   // Animation for success message
   const [fadeAnim] = useState(new Animated.Value(0));
-
-  const checkPasswordStrength = (password: string) => {
-    if (!password) {
-      setPasswordStrength(0);
-      return;
-    }
-
-    let strength = 0;
-
-    // Length check
-    if (password.length >= 8) strength += 1;
-
-    // Contains number
-    if (/\d/.test(password)) strength += 1;
-
-    // Contains lowercase
-    if (/[a-z]/.test(password)) strength += 1;
-
-    // Contains uppercase
-    if (/[A-Z]/.test(password)) strength += 1;
-
-    // Contains special character
-    if (/[^A-Za-z0-9]/.test(password)) strength += 1;
-
-    setPasswordStrength(strength);
-  };
-
-  const getPasswordStrengthLabel = () => {
-    if (passwordStrength === 0) return "";
-    if (passwordStrength < 3) return "Weak";
-    if (passwordStrength < 5) return "Medium";
-    return "Strong";
-  };
-
-  const getPasswordStrengthColor = () => {
-    if (passwordStrength === 0) return "#e2e8f0"; // Slate-200
-    if (passwordStrength < 3) return "#ef4444"; // Red-500
-    if (passwordStrength < 5) return "#f59e0b"; // Amber-500
-    return "#10b981"; // Green-500
-  };
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -124,65 +78,6 @@ export default function Profile() {
     } catch (error) {
       console.error(error);
       Alert.alert('Error', error.message || 'Something went wrong.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdatePassword = async () => {
-    setSecurityError("");
-    if (newPassword.length < 6) {
-      setSecurityError('Password must be at least 6 characters.');
-      return;
-    }
-    if (newPassword !== repeatPassword) {
-      setSecurityError('Passwords do not match.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/users/update-pwd`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          old_password: currentPassword,
-          password: newPassword,
-          password_confirmation: repeatPassword,
-        }),
-      });
-      const contentType = res.headers.get('content-type');
-      let data = null;
-      if (contentType && contentType.indexOf('application/json') !== -1) {
-        data = await res.json();
-      } else {
-        throw new Error('Server returned an unexpected response.');
-      }
-      if (!res.ok) throw new Error(data.message || 'Failed to update password');
-      setNewPassword("");
-      setRepeatPassword("");
-      setPasswordStrength(0);
-      setSuccessMessage('Password updated successfully');
-      Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.delay(2000),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setTimeout(() => setSuccessMessage(""), 300);
-      });
-    } catch (err) {
-      setSecurityError(err.message || 'Failed to update password.');
     } finally {
       setLoading(false);
     }
@@ -263,138 +158,6 @@ export default function Profile() {
                 selectTextOnFocus={false}
               />
             </View>
-          </View>
-
-          <View style={styles.formSection}>
-            <Text style={styles.sectionTitle}>Security</Text>
-            <Text style={styles.label}>Current Password</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color="#64748b"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={[styles.input, styles.passwordInput]}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                secureTextEntry={!showPassword}
-                placeholder="Enter your current password"
-                placeholderTextColor="#94a3b8"
-              />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color="#64748b"
-                />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.label}>New Password</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color="#64748b"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={[styles.input, styles.passwordInput]}
-                value={newPassword}
-                onChangeText={(text) => {
-                  setNewPassword(text);
-                  checkPasswordStrength(text);
-                }}
-                secureTextEntry={!showPassword}
-                placeholder="Enter new password"
-                placeholderTextColor="#94a3b8"
-              />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color="#64748b"
-                />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.label}>Repeat New Password</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color="#64748b"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={[styles.input, styles.passwordInput]}
-                value={repeatPassword}
-                onChangeText={setRepeatPassword}
-                secureTextEntry={!showPassword}
-                placeholder="Repeat new password"
-                placeholderTextColor="#94a3b8"
-              />
-            </View>
-            {newPassword ? (
-              <View style={styles.passwordStrengthContainer}>
-                <View style={styles.strengthBars}>
-                  {[1, 2, 3, 4, 5].map((level) => (
-                    <View
-                      key={level}
-                      style={[
-                        styles.strengthBar,
-                        {
-                          backgroundColor:
-                            level <= passwordStrength
-                              ? getPasswordStrengthColor()
-                              : "#e2e8f0",
-                        },
-                      ]}
-                    />
-                  ))}
-                </View>
-                <Text
-                  style={[
-                    styles.strengthText,
-                    { color: getPasswordStrengthColor() },
-                  ]}
-                >
-                  {getPasswordStrengthLabel()}
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.passwordHint}>
-                Password must be at least 6 characters
-              </Text>
-            )}
-            {securityError ? (
-              <Text
-                style={{
-                  color: "#ef4444",
-                  fontSize: 12,
-                  marginBottom: 8,
-                }}
-              >
-                {securityError}
-              </Text>
-            ) : null}
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleUpdatePassword}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text style={styles.buttonText}>Save Password</Text>
-              )}
-            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -553,43 +316,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 16,
     color: "#0f172a", // Slate-900
-  },
-  passwordInput: {
-    paddingRight: 40, // Space for the eye icon
-  },
-  eyeIcon: {
-    position: "absolute",
-    right: 16,
-  },
-  passwordHint: {
-    fontSize: 12,
-    color: "#94a3b8", // Slate-400
-    marginTop: -8,
-    marginBottom: 8,
-  },
-  passwordStrengthContainer: {
-    marginTop: -8,
-    marginBottom: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  strengthBars: {
-    flexDirection: "row",
-    flex: 1,
-    marginRight: 12,
-  },
-  strengthBar: {
-    flex: 1,
-    height: 4,
-    marginRight: 4,
-    borderRadius: 2,
-  },
-  strengthText: {
-    fontSize: 12,
-    fontWeight: "500",
-    width: 60,
-    textAlign: "right",
   },
   button: {
     backgroundColor: "#0891b2", // Cyan-600

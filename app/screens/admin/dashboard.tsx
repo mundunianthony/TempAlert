@@ -27,11 +27,17 @@ import AdminNavbar from './Navbar';
 // const database = getFirestore();
 
 interface Storeroom {
-  id: string;
+  id: number;
   name: string;
-  temperature: number;
-  status: "Normal" | "Warning" | "Critical";
-  lastUpdated: Date;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  current_temperature?: number;
+  last_reading_time?: string;
+  threshold?: {
+    min_temperature: number;
+    max_temperature: number;
+  };
 }
 
 export default function AdminDashboard() {
@@ -42,40 +48,30 @@ export default function AdminDashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const alerts = useMemo(() => {
-    const fixedThresholds = {
-      tooCold: 15,
-      warmingUp: 25,
-      tooHot: 31,
-      critical: 40,
-    };
-    
     return storerooms
-      .filter((room) => room.temperature <= fixedThresholds.tooCold || room.temperature >= fixedThresholds.warmingUp)
+      .filter((room) => {
+        if (!room.current_temperature || !room.threshold) return false;
+        const temp = room.current_temperature;
+        const min = room.threshold.min_temperature;
+        const max = room.threshold.max_temperature;
+        return temp < min || temp > max;
+      })
       .map((room) => ({
-        message: getAlertMessage(room.temperature, room.name),
-        timestamp: room.lastUpdated
-          ? room.lastUpdated.toISOString()
-          : "",
-        temperature: room.temperature,
+        message: getAlertMessage(room.current_temperature!, room.name),
+        timestamp: room.last_reading_time || "",
+        temperature: room.current_temperature!,
         storeroomName: room.name,
       }));
   }, [storerooms]);
 
   function getAlertMessage(temperature: number, storeroomName: string) {
-    const fixedThresholds = {
-      tooCold: 15,
-      warmingUp: 25,
-      tooHot: 31,
-      critical: 40,
-    };
-    
-    if (temperature <= fixedThresholds.tooCold) {
+    if (temperature <= 15) {
       return `Temperature too low in ${storeroomName} (${temperature}°C)! Risk of freezing—check cooling system.`;
-    } else if (temperature >= fixedThresholds.warmingUp && temperature < fixedThresholds.tooHot) {
+    } else if (temperature >= 25 && temperature <= 30) {
       return `Temperature warming up in ${storeroomName} (${temperature}°C)—monitor to prevent spoilage.`;
-    } else if (temperature >= fixedThresholds.tooHot && temperature < fixedThresholds.critical) {
+    } else if (temperature >= 31 && temperature <= 40) {
       return `Temperature too hot in ${storeroomName} (${temperature}°C)! Risk of spoilage—take action now.`;
-    } else if (temperature >= fixedThresholds.critical) {
+    } else if (temperature > 40) {
       return `Critical heat in ${storeroomName} (${temperature}°C)! Immediate intervention required.`;
     }
     return "No alert";
@@ -94,34 +90,159 @@ export default function AdminDashboard() {
 
     setLoading(true);
 
-    // Fetch storerooms from API
-    fetch('https://tempalert.onensensy.com/api/rooms', {
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-    })
-      .then(res => res.json())
-      .then(data => {
-        setStorerooms(data.data || []);
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch rooms with thresholds
+        const roomsResponse = await fetch('https://tempalert.onensensy.com/api/rooms', {
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const roomsData = await roomsResponse.json();
+        const rooms = roomsData.data || [];
+
+        // Fetch thresholds for each room
+        const roomsWithThresholds = await Promise.all(
+          rooms.map(async (room: any) => {
+            try {
+              const thresholdResponse = await fetch(`https://tempalert.onensensy.com/api/thresholds?options[room_id]=${room.id}`, {
+                headers: {
+                  'Accept': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                },
+              });
+              const thresholdData = await thresholdResponse.json();
+              const threshold = thresholdData.data?.[0] || null;
+
+              // Fetch latest temperature reading for this room
+              let currentTemperature = null;
+              let lastReadingTime = null;
+              
+              if (threshold) {
+                try {
+                  const sensorsResponse = await fetch(`https://tempalert.onensensy.com/api/sensors?options[room_id]=${room.id}`, {
+                    headers: {
+                      'Accept': 'application/json',
+                      'Authorization': `Bearer ${token}`,
+                    },
+                  });
+                  const sensorsData = await sensorsResponse.json();
+                  const sensors = sensorsData.data || [];
+
+                  if (sensors.length > 0) {
+                    // Get latest temperature reading from any sensor in this room
+                    const latestReadings = await Promise.all(
+                      sensors.map(async (sensor: any) => {
+                        try {
+                          const readingsResponse = await fetch(`https://tempalert.onensensy.com/api/temperature-readings?options[sensor_id]=${sensor.id}`, {
+                            headers: {
+                              'Accept': 'application/json',
+                              'Authorization': `Bearer ${token}`,
+                            },
+                          });
+                          const readingsData = await readingsResponse.json();
+                          return readingsData.data || [];
+                        } catch (error) {
+                          console.error('Error fetching readings for sensor:', sensor.id, error);
+                          return [];
+                        }
+                      })
+                    );
+
+                    // Find the latest reading across all sensors
+                    const allReadings = latestReadings.flat();
+                    if (allReadings.length > 0) {
+                      const latestReading = allReadings.sort((a: any, b: any) => 
+                        new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
+                      )[0];
+                      currentTemperature = latestReading.temperature_value;
+                      lastReadingTime = latestReading.recorded_at;
+                    }
+                  }
+                } catch (error) {
+                  console.error('Error fetching temperature readings for room:', room.id, error);
+                }
+              }
+
+              return {
+                ...room,
+                threshold: threshold ? {
+                  min_temperature: threshold.min_temperature,
+                  max_temperature: threshold.max_temperature,
+                } : null,
+                current_temperature: currentTemperature,
+                last_reading_time: lastReadingTime,
+              };
+            } catch (error) {
+              console.error('Error fetching threshold for room:', room.id, error);
+              return room;
+            }
+          })
+        );
+
+        setStorerooms(roomsWithThresholds);
         setLoading(false);
-      })
-      .catch(err => {
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
         setLoading(false);
-        // Optionally handle error
-      });
+      }
+    };
+
+    fetchDashboardData();
   }, [user, router, refreshKey, isAdmin]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Normal":
-        return styles.statusNormal;
-      case "Warning":
-        return styles.statusWarning;
-      case "Critical":
-        return styles.statusCritical;
-      default:
-        return styles.statusUnknown;
+  const getStatusColor = (room: Storeroom) => {
+    if (!room.current_temperature || !room.threshold) {
+      return styles.statusUnknown;
+    }
+
+    const temp = room.current_temperature;
+    const min = room.threshold.min_temperature;
+    const max = room.threshold.max_temperature;
+
+    if (temp < min) {
+      return styles.statusLow;
+    } else if (temp > max) {
+      return styles.statusHigh;
+    } else {
+      return styles.statusNormal;
+    }
+  };
+
+  const getStatusIcon = (room: Storeroom) => {
+    if (!room.current_temperature || !room.threshold) {
+      return <Ionicons name="help-circle" size={18} color="#6b7280" />;
+    }
+
+    const temp = room.current_temperature;
+    const min = room.threshold.min_temperature;
+    const max = room.threshold.max_temperature;
+
+    if (temp < min) {
+      return <Ionicons name="thermometer-outline" size={18} color="#3b82f6" />;
+    } else if (temp > max) {
+      return <Ionicons name="flame" size={18} color="#ef4444" />;
+    } else {
+      return <Ionicons name="checkmark-circle" size={18} color="#10b981" />;
+    }
+  };
+
+  const getStatusText = (room: Storeroom) => {
+    if (!room.current_temperature || !room.threshold) {
+      return "Unknown";
+    }
+
+    const temp = room.current_temperature;
+    const min = room.threshold.min_temperature;
+    const max = room.threshold.max_temperature;
+
+    if (temp < min) {
+      return "Low";
+    } else if (temp > max) {
+      return "High";
+    } else {
+      return "Normal";
     }
   };
 
@@ -150,19 +271,6 @@ export default function AdminDashboard() {
 
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "Normal":
-        return <Ionicons name="checkmark-circle" size={18} color="#10b981" />;
-      case "Warning":
-        return <Ionicons name="alert-circle" size={18} color="#f59e0b" />;
-      case "Critical":
-        return <Ionicons name="warning" size={18} color="#ef4444" />;
-      default:
-        return <Ionicons name="help-circle" size={18} color="#6b7280" />;
-    }
   };
 
   if (!user || !isAdmin) {
@@ -219,12 +327,12 @@ export default function AdminDashboard() {
                 </View>
                 <Text style={styles.summaryValue}>
                   {storerooms.length > 0
-                    ? `${Math.round(
-                        storerooms.reduce(
-                          (sum, room) => sum + room.temperature,
-                          0
-                        ) / storerooms.length
-                      )}°C`
+                    ? (() => {
+                        const roomsWithTemp = storerooms.filter(room => room.current_temperature !== null && room.current_temperature !== undefined);
+                        if (roomsWithTemp.length === 0) return "N/A";
+                        const avgTemp = roomsWithTemp.reduce((sum, room) => sum + room.current_temperature!, 0) / roomsWithTemp.length;
+                        return `${Math.round(avgTemp)}°C`;
+                      })()
                     : "N/A"}
                 </Text>
                 <Text style={styles.summaryLabel}>Avg Temp</Text>
@@ -297,23 +405,25 @@ export default function AdminDashboard() {
                     <View style={styles.storeroomInfo}>
                       <Text style={styles.roomName}>{room.name}</Text>
                       <Text style={styles.lastUpdated}>
-                        Updated{" "}
-                        {timeAgo(room.lastUpdated.toISOString())}
+                        {room.last_reading_time 
+                          ? `Updated ${timeAgo(room.last_reading_time)}`
+                          : "No recent readings"
+                        }
                       </Text>
                     </View>
 
                     <View style={styles.temperatureContainer}>
                       <Text style={styles.temperatureValue}>
-                        {room.temperature}°C
+                        {room.current_temperature ? `${room.current_temperature}°C` : "N/A"}
                       </Text>
                       <View
-                        style={[styles.statusBadge, getStatusColor(room.status)]}
+                        style={[styles.statusBadge, getStatusColor(room)]}
                       >
-                        {getStatusIcon(room.status)}
+                        {getStatusIcon(room)}
                         <Text
-                          style={[styles.statusText, getStatusColor(room.status)]}
+                          style={[styles.statusText, getStatusColor(room)]}
                         >
-                          {room.status}
+                          {getStatusText(room)}
                         </Text>
                       </View>
                     </View>
@@ -566,11 +676,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(16, 185, 129, 0.1)",
     color: "#10b981",
   },
-  statusWarning: {
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
-    color: "#f59e0b",
+  statusLow: {
+    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    color: "#3b82f6",
   },
-  statusCritical: {
+  statusHigh: {
     backgroundColor: "rgba(239, 68, 68, 0.1)",
     color: "#ef4444",
   },
