@@ -20,6 +20,7 @@ import {
   Ionicons,
 } from "@expo/vector-icons";
 import Navbar from "../../src/components/Navbar";
+import { isDummyRoom, getDummyRoomData, getFirstRoomId } from "../../src/utils/dummyDataGenerator";
 
 interface Storeroom {
   id: number;
@@ -33,6 +34,7 @@ interface Storeroom {
     min_temperature: number;
     max_temperature: number;
   };
+  is_dummy: boolean;
 }
 
 interface TemperatureDataPoint {
@@ -69,6 +71,9 @@ export default function Dashboard() {
         const roomsData = await roomsResponse.json();
         const rooms = roomsData.data || [];
 
+        // Get the first room ID (real sensor room)
+        const firstRoomId = await getFirstRoomId();
+
         // Fetch thresholds for each room
         const roomsWithThresholds = await Promise.all(
           rooms.map(async (room: any) => {
@@ -82,11 +87,18 @@ export default function Dashboard() {
               const thresholdData = await thresholdResponse.json();
               const threshold = thresholdData.data?.[0] || null;
 
-              // Fetch latest temperature reading for this room
+              // Check if this is a dummy room
+              const isDummy = await isDummyRoom(room.id);
               let currentTemperature = null;
               let lastReadingTime = null;
               
-              if (threshold) {
+              if (isDummy) {
+                // Use dummy data for non-first rooms
+                const dummyData = await getDummyRoomData(room.id, room.name);
+                currentTemperature = dummyData.currentTemperature;
+                lastReadingTime = dummyData.lastUpdated;
+              } else if (threshold && room.id === firstRoomId) {
+                // Use real sensor data for the first room
                 try {
                   const sensorsResponse = await fetch(`https://tempalert.onensensy.com/api/sensors?options[room_id]=${room.id}`, {
                     headers: {
@@ -140,6 +152,7 @@ export default function Dashboard() {
                 } : null,
                 current_temperature: currentTemperature,
                 last_reading_time: lastReadingTime,
+                is_dummy: isDummy,
               };
             } catch (error) {
               console.error('Error fetching threshold for room:', room.id, error);
@@ -305,6 +318,7 @@ export default function Dashboard() {
         timestamp: room.last_reading_time || "",
         temperature: room.current_temperature!,
         storeroomName: room.name,
+        isDummy: room.is_dummy || false,
       }));
   }, [storerooms]);
 

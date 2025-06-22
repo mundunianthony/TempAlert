@@ -23,6 +23,7 @@ import {
 // import { collection, onSnapshot, Timestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdminNavbar from './Navbar';
+import { isDummyRoom, getDummyRoomData, getFirstRoomId } from "../../../src/utils/dummyDataGenerator";
 
 // const database = getFirestore();
 
@@ -38,6 +39,7 @@ interface Storeroom {
     min_temperature: number;
     max_temperature: number;
   };
+  is_dummy?: boolean;
 }
 
 export default function AdminDashboard() {
@@ -67,6 +69,7 @@ export default function AdminDashboard() {
         timestamp: room.last_reading_time || "",
         temperature: room.current_temperature!,
         storeroomName: room.name,
+        isDummy: room.is_dummy || false,
       }));
   }, [storerooms]);
 
@@ -108,6 +111,9 @@ export default function AdminDashboard() {
         const roomsData = await roomsResponse.json();
         const rooms = roomsData.data || [];
 
+        // Get the first room ID (real sensor room)
+        const firstRoomId = await getFirstRoomId();
+
         // Fetch admin statistics
         const [usersResponse, sensorsResponse] = await Promise.all([
           fetch('https://tempalert.onensensy.com/api/users', {
@@ -142,52 +148,61 @@ export default function AdminDashboard() {
               const thresholdData = await thresholdResponse.json();
               const threshold = thresholdData.data?.[0] || null;
 
-              // Fetch latest temperature reading for this room
+              // Check if this is a dummy room
+              const isDummy = await isDummyRoom(room.id);
               let currentTemperature = null;
               let lastReadingTime = null;
               
-              try {
-                const sensorsResponse = await fetch(`https://tempalert.onensensy.com/api/sensors?options[room_id]=${room.id}`, {
-                  headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                  },
-                });
-                const sensorsData = await sensorsResponse.json();
-                const sensors = sensorsData.data || [];
+              if (isDummy) {
+                // Use dummy data for non-first rooms
+                const dummyData = await getDummyRoomData(room.id, room.name);
+                currentTemperature = dummyData.currentTemperature;
+                lastReadingTime = dummyData.lastUpdated;
+              } else if (threshold && room.id === firstRoomId) {
+                // Use real sensor data for the first room
+                try {
+                  const sensorsResponse = await fetch(`https://tempalert.onensensy.com/api/sensors?options[room_id]=${room.id}`, {
+                    headers: {
+                      'Accept': 'application/json',
+                      'Authorization': `Bearer ${token}`,
+                    },
+                  });
+                  const sensorsData = await sensorsResponse.json();
+                  const sensors = sensorsData.data || [];
 
-                if (sensors.length > 0) {
-                  // Get latest temperature reading from any sensor in this room
-                  const latestReadings = await Promise.all(
-                    sensors.map(async (sensor: any) => {
-                      try {
-                        const readingsResponse = await fetch(`https://tempalert.onensensy.com/api/temperature-readings?options[sensor_id]=${sensor.id}`, {
-                          headers: {
-                            'Accept': 'application/json',
-                            'Authorization': `Bearer ${token}`,
-                          },
-                        });
-                        const readingsData = await readingsResponse.json();
-                        return readingsData.data || [];
-                      } catch (error) {
-                        console.error('Error fetching readings for sensor:', sensor.id, error);
-                        return [];
-                      }
-                    })
-                  );
+                  if (sensors.length > 0) {
+                    // Get latest temperature reading from any sensor in this room
+                    const latestReadings = await Promise.all(
+                      sensors.map(async (sensor: any) => {
+                        try {
+                          const readingsResponse = await fetch(`https://tempalert.onensensy.com/api/temperature-readings?options[sensor_id]=${sensor.id}`, {
+                            headers: {
+                              'Accept': 'application/json',
+                              'Authorization': `Bearer ${token}`,
+                            },
+                          });
+                          const readingsData = await readingsResponse.json();
+                          return readingsData.data || [];
+                        } catch (error) {
+                          console.error('Error fetching readings for sensor:', sensor.id, error);
+                          return [];
+                        }
+                      })
+                    );
 
-                  // Find the latest reading across all sensors
-                  const allReadings = latestReadings.flat();
-                  if (allReadings.length > 0) {
-                    const latestReading = allReadings.sort((a: any, b: any) => 
-                      new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
-                    )[0];
-                    currentTemperature = latestReading.temperature_value;
-                    lastReadingTime = latestReading.recorded_at;
+                    // Find the latest reading across all sensors
+                    const allReadings = latestReadings.flat();
+                    if (allReadings.length > 0) {
+                      const latestReading = allReadings.sort((a: any, b: any) => 
+                        new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
+                      )[0];
+                      currentTemperature = latestReading.temperature_value;
+                      lastReadingTime = latestReading.recorded_at;
+                    }
                   }
+                } catch (error) {
+                  console.error('Error fetching temperature readings for room:', room.id, error);
                 }
-              } catch (error) {
-                console.error('Error fetching temperature readings for room:', room.id, error);
               }
 
               return {
@@ -198,6 +213,7 @@ export default function AdminDashboard() {
                 } : null,
                 current_temperature: currentTemperature,
                 last_reading_time: lastReadingTime,
+                is_dummy: isDummy,
               };
             } catch (error) {
               console.error('Error fetching threshold for room:', room.id, error);
@@ -436,6 +452,9 @@ export default function AdminDashboard() {
                           ? `Updated ${timeAgo(room.last_reading_time)}`
                           : "No recent readings"
                         }
+                        {room.is_dummy && (
+                          <Text style={styles.dummyIndicator}> • Simulated</Text>
+                        )}
                       </Text>
                     </View>
 
@@ -746,5 +765,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  dummyIndicator: {
+    fontSize: 12,
+    color: "#64748b",
+    fontStyle: "italic",
   },
 });

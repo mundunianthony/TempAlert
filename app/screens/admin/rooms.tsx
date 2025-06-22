@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useRouter } from 'expo-router';
 import AdminNavbar from './Navbar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Room {
   id: number;
@@ -37,7 +38,7 @@ interface Threshold {
 
 interface Farm {
   id: number;
-  farm_name: string;
+  name: string;
   location: string;
   owner_user_id: number;
 }
@@ -66,6 +67,47 @@ export default function RoomsScreen() {
   });
 
   const [createWithThreshold, setCreateWithThreshold] = useState(true);
+
+  // Room configuration management
+  const getRoomConfiguration = async () => {
+    try {
+      const config = await AsyncStorage.getItem('roomConfiguration');
+      return config ? JSON.parse(config) : { firstRoomId: null, roomOrder: [], roomTypes: {} };
+    } catch (error) {
+      console.error('Error getting room configuration:', error);
+      return { firstRoomId: null, roomOrder: [], roomTypes: {} };
+    }
+  };
+
+  const saveRoomConfiguration = async (config: any) => {
+    try {
+      await AsyncStorage.setItem('roomConfiguration', JSON.stringify(config));
+    } catch (error) {
+      console.error('Error saving room configuration:', error);
+    }
+  };
+
+  const assignRoomType = async (roomId: number, roomName: string) => {
+    const config = await getRoomConfiguration();
+    
+    // If this is the first room, assign as real
+    if (config.roomOrder.length === 0) {
+      config.firstRoomId = roomId;
+      config.roomTypes[roomId] = 'real';
+    } else {
+      // All subsequent rooms are dummy
+      config.roomTypes[roomId] = 'dummy';
+    }
+    
+    config.roomOrder.push({
+      id: roomId,
+      name: roomName,
+      createdAt: new Date().toISOString()
+    });
+    
+    await saveRoomConfiguration(config);
+    return config.roomTypes[roomId];
+  };
 
   useEffect(() => {
     if (!user || !isAdmin) {
@@ -136,7 +178,48 @@ export default function RoomsScreen() {
 
     setCreateLoading(true);
     try {
+      // Ensure we have a valid farm first
+      let farmId = 1; // Default farm ID
+      
+      // Check if farms exist, if not create a default farm
+      if (farms.length === 0) {
+        try {
+          const farmResponse = await fetch('https://tempalert.onensensy.com/api/farms', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              name: 'Default Farm',
+              location: 'Main Location',
+              owner_user_id: (user?.id || 1).toString(),
+            }),
+          });
+          
+          if (farmResponse.ok) {
+            const farmData = await farmResponse.json();
+            farmId = farmData.data?.id || 1;
+          }
+        } catch (farmError) {
+          console.error('Error creating default farm:', farmError);
+          // Continue with farm_id = 1
+        }
+      } else {
+        // Use the first available farm
+        farmId = farms[0].id;
+      }
+
       // Create room first
+      const roomRequestData = {
+        farm_id: farmId.toString(),
+        name: newRoom.name.trim(),
+        description: newRoom.description.trim(),
+      };
+      
+      console.log('Creating room with data:', roomRequestData);
+      
       const roomResponse = await fetch('https://tempalert.onensensy.com/api/rooms', {
         method: 'POST',
         headers: {
@@ -144,10 +227,7 @@ export default function RoomsScreen() {
           'Accept': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: newRoom.name.trim(),
-          description: newRoom.description.trim(),
-        }),
+        body: JSON.stringify(roomRequestData),
       });
 
       const roomData = await roomResponse.json();
@@ -155,6 +235,14 @@ export default function RoomsScreen() {
         const createdRoom = roomData.data;
         
         // Create threshold (now required)
+        const thresholdRequestData = {
+          room_id: createdRoom.id.toString(),
+          min_temperature: minTemp.toString(),
+          max_temperature: maxTemp.toString(),
+        };
+        
+        console.log('Creating threshold with data:', thresholdRequestData);
+        
         const thresholdResponse = await fetch('https://tempalert.onensensy.com/api/thresholds', {
           method: 'POST',
           headers: {
@@ -162,15 +250,13 @@ export default function RoomsScreen() {
             'Accept': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            room_id: createdRoom.id,
-            min_temperature: minTemp,
-            max_temperature: maxTemp,
-          }),
+          body: JSON.stringify(thresholdRequestData),
         });
 
+        const thresholdData = await thresholdResponse.json();
         if (!thresholdResponse.ok) {
-          Alert.alert('Error', 'Room created but threshold creation failed');
+          console.error('Threshold creation error:', thresholdData);
+          Alert.alert('Error', `Room created but threshold creation failed: ${thresholdData.message || 'Unknown error'}`);
           return;
         }
 
@@ -179,8 +265,14 @@ export default function RoomsScreen() {
         setNewRoom({ name: '', description: '' });
         setNewThreshold({ min_temperature: '', max_temperature: '' });
         setCreateWithThreshold(true);
+        
+        // Assign room type after successful creation
+        const roomType = await assignRoomType(createdRoom.id, createdRoom.name);
+        console.log(`Room ${createdRoom.name} assigned as ${roomType} room`);
+        
         fetchData();
       } else {
+        console.error('Room creation error:', roomData);
         Alert.alert('Error', roomData.message || 'Failed to create room');
       }
     } catch (error) {
@@ -242,6 +334,14 @@ export default function RoomsScreen() {
 
     setThresholdLoading(true);
     try {
+      const thresholdRequestData = {
+        room_id: selectedRoom.id.toString(),
+        min_temperature: minTemp.toString(),
+        max_temperature: maxTemp.toString(),
+      };
+      
+      console.log('Creating threshold with data:', thresholdRequestData);
+      
       const response = await fetch('https://tempalert.onensensy.com/api/thresholds', {
         method: 'POST',
         headers: {
@@ -249,11 +349,7 @@ export default function RoomsScreen() {
           'Accept': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          room_id: selectedRoom.id,
-          min_temperature: minTemp,
-          max_temperature: maxTemp,
-        }),
+        body: JSON.stringify(thresholdRequestData),
       });
 
       const data = await response.json();
@@ -264,6 +360,7 @@ export default function RoomsScreen() {
         setSelectedRoom(null);
         fetchData();
       } else {
+        console.error('Threshold creation error:', data);
         Alert.alert('Error', data.message || 'Failed to create threshold');
       }
     } catch (error) {
@@ -280,7 +377,7 @@ export default function RoomsScreen() {
 
   const getFarmName = (farmId: number) => {
     const farm = farms.find(f => f.id === farmId);
-    return farm ? farm.farm_name : 'Unknown Farm';
+    return farm ? farm.name : 'Unknown Farm';
   };
 
   if (loading) {
