@@ -21,8 +21,8 @@ import {
 } from "@expo/vector-icons";
 // import { getFirestore } from "../../../src/lib/firebase";
 // import { collection, onSnapshot, Timestamp, doc, setDoc, getDoc } from "firebase/firestore";
-import Navbar from "../../../src/components/Navbar";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AdminNavbar from './Navbar';
 
 // const database = getFirestore();
 
@@ -34,40 +34,23 @@ interface Storeroom {
   lastUpdated: Date;
 }
 
-interface TemperatureThresholds {
-  tooCold: number;
-  warmingUp: number;
-  tooHot: number;
-  critical: number;
-}
-
 export default function AdminDashboard() {
   const { user, logout, isAdmin, token } = useAuth();
   const router = useRouter();
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [thresholds, setThresholds] = useState<TemperatureThresholds>({
-    tooCold: 15,
-    warmingUp: 25,
-    tooHot: 31,
-    critical: 40,
-  });
-  const [isEditingThresholds, setIsEditingThresholds] = useState(false);
-  const [newUser, setNewUser] = useState({
-    name: '',
-    email: '',
-    password: '',
-    password_confirmation: '',
-    role: 'user',
-  });
-  const [userCreateLoading, setUserCreateLoading] = useState(false);
-  const [userCreateError, setUserCreateError] = useState('');
-  const [userCreateSuccess, setUserCreateSuccess] = useState('');
 
   const alerts = useMemo(() => {
+    const fixedThresholds = {
+      tooCold: 15,
+      warmingUp: 25,
+      tooHot: 31,
+      critical: 40,
+    };
+    
     return storerooms
-      .filter((room) => room.temperature <= thresholds.tooCold || room.temperature >= thresholds.warmingUp)
+      .filter((room) => room.temperature <= fixedThresholds.tooCold || room.temperature >= fixedThresholds.warmingUp)
       .map((room) => ({
         message: getAlertMessage(room.temperature, room.name),
         timestamp: room.lastUpdated
@@ -76,16 +59,23 @@ export default function AdminDashboard() {
         temperature: room.temperature,
         storeroomName: room.name,
       }));
-  }, [storerooms, thresholds]);
+  }, [storerooms]);
 
   function getAlertMessage(temperature: number, storeroomName: string) {
-    if (temperature <= thresholds.tooCold) {
+    const fixedThresholds = {
+      tooCold: 15,
+      warmingUp: 25,
+      tooHot: 31,
+      critical: 40,
+    };
+    
+    if (temperature <= fixedThresholds.tooCold) {
       return `Temperature too low in ${storeroomName} (${temperature}°C)! Risk of freezing—check cooling system.`;
-    } else if (temperature >= thresholds.warmingUp && temperature < thresholds.tooHot) {
+    } else if (temperature >= fixedThresholds.warmingUp && temperature < fixedThresholds.tooHot) {
       return `Temperature warming up in ${storeroomName} (${temperature}°C)—monitor to prevent spoilage.`;
-    } else if (temperature >= thresholds.tooHot && temperature < thresholds.critical) {
+    } else if (temperature >= fixedThresholds.tooHot && temperature < fixedThresholds.critical) {
       return `Temperature too hot in ${storeroomName} (${temperature}°C)! Risk of spoilage—take action now.`;
-    } else if (temperature >= thresholds.critical) {
+    } else if (temperature >= fixedThresholds.critical) {
       return `Critical heat in ${storeroomName} (${temperature}°C)! Immediate intervention required.`;
     }
     return "No alert";
@@ -121,16 +111,6 @@ export default function AdminDashboard() {
         // Optionally handle error
       });
   }, [user, router, refreshKey, isAdmin]);
-
-  const handleSaveThresholds = async () => {
-    try {
-      // await setDoc(doc(database, "settings", "temperatureThresholds"), thresholds);
-      setIsEditingThresholds(false);
-      Alert.alert("Success", "Temperature thresholds updated successfully");
-    } catch (error) {
-      Alert.alert("Error", "Failed to update temperature thresholds");
-    }
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -185,78 +165,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleCreateUser = async () => {
-    setUserCreateError('');
-    setUserCreateSuccess('');
-    // Structured validation
-    if (!newUser.name.trim()) {
-      setUserCreateError('Full Name is required.');
-      return;
-    }
-    if (!newUser.email.trim()) {
-      setUserCreateError('Email is required.');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newUser.email.trim())) {
-      setUserCreateError('Please enter a valid email address.');
-      return;
-    }
-    if (!newUser.password) {
-      setUserCreateError('Password is required.');
-      return;
-    }
-    if (newUser.password.length < 6) {
-      setUserCreateError('Password must be at least 6 characters.');
-      return;
-    }
-    if (newUser.password !== newUser.password_confirmation) {
-      setUserCreateError('Passwords do not match.');
-      return;
-    }
-    if (!newUser.role.trim()) {
-      setUserCreateError('Role is required.');
-      return;
-    }
-    setUserCreateLoading(true);
-    try {
-      const res = await fetch('https://tempalert.onensensy.com/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(newUser),
-      });
-      const contentType = res.headers.get('content-type');
-      let data = null;
-      if (contentType && contentType.indexOf('application/json') !== -1) {
-        data = await res.json();
-      } else {
-        throw new Error('Server returned an unexpected response.');
-      }
-      if (!res.ok || !data.data) {
-        // Show all validation errors from API
-        if (data.errors) {
-          const errorMessages = Object.entries(data.errors)
-            .map(([field, messages]) => `${field}: ${(Array.isArray(messages) ? messages.join(', ') : messages)}`)
-            .join('\n');
-          setUserCreateError(errorMessages);
-        } else {
-          setUserCreateError(data.message || 'User creation failed');
-        }
-        return;
-      }
-      setUserCreateSuccess('User created successfully!');
-      setNewUser({ name: '', email: '', password: '', password_confirmation: '', role: 'user' });
-    } catch (err: any) {
-      setUserCreateError(err.message || 'User creation failed');
-    } finally {
-      setUserCreateLoading(false);
-    }
-  };
-
   if (!user || !isAdmin) {
     return (
       <View style={styles.loadingContainer}>
@@ -269,54 +177,6 @@ export default function AdminDashboard() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
-
-      {/* User Creation Form */}
-      <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12, margin: 16, elevation: 2 }}>
-        <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>Create New User</Text>
-        {userCreateError ? <Text style={{ color: '#ef4444', marginBottom: 8 }}>{userCreateError}</Text> : null}
-        {userCreateSuccess ? <Text style={{ color: '#10b981', marginBottom: 8 }}>{userCreateSuccess}</Text> : null}
-        <TextInput
-          placeholder="Full Name"
-          value={newUser.name}
-          onChangeText={text => setNewUser(u => ({ ...u, name: text }))}
-          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 8 }}
-        />
-        <TextInput
-          placeholder="Email"
-          value={newUser.email}
-          onChangeText={text => setNewUser(u => ({ ...u, email: text }))}
-          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 8 }}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TextInput
-          placeholder="Password"
-          value={newUser.password}
-          onChangeText={text => setNewUser(u => ({ ...u, password: text }))}
-          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 8 }}
-          secureTextEntry
-        />
-        <TextInput
-          placeholder="Confirm Password"
-          value={newUser.password_confirmation}
-          onChangeText={text => setNewUser(u => ({ ...u, password_confirmation: text }))}
-          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 8 }}
-          secureTextEntry
-        />
-        <TextInput
-          placeholder="Role (user, manager, etc.)"
-          value={newUser.role}
-          onChangeText={text => setNewUser(u => ({ ...u, role: text }))}
-          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 8 }}
-        />
-        <TouchableOpacity
-          onPress={handleCreateUser}
-          style={{ backgroundColor: '#2563eb', padding: 14, borderRadius: 8, alignItems: 'center' }}
-          disabled={userCreateLoading}
-        >
-          {userCreateLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Create User</Text>}
-        </TouchableOpacity>
-      </View>
 
       {/* Header */}
       <View style={styles.header}>
@@ -395,109 +255,20 @@ export default function AdminDashboard() {
               <Text style={styles.sectionTitle}>Admin Controls</Text>
             </View>
             <View style={styles.adminControls}>
-              <TouchableOpacity style={styles.adminButton}>
+              <TouchableOpacity 
+                style={styles.adminButton}
+                onPress={() => router.push("/screens/admin/users")}
+              >
                 <Ionicons name="people-outline" size={24} color="#0891b2" />
                 <Text style={styles.adminButtonText}>Manage Users</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.adminButton}
-                onPress={() => router.push("/screens/profile")}
+                onPress={() => router.push("/screens/admin/rooms")}
               >
-                <Ionicons name="settings-outline" size={24} color="#0891b2" />
-                <Text style={styles.adminButtonText}>System Settings</Text>
+                <Ionicons name="business-outline" size={24} color="#0891b2" />
+                <Text style={styles.adminButtonText}>Manage Rooms</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.adminButton}>
-                <Ionicons name="analytics-outline" size={24} color="#0891b2" />
-                <Text style={styles.adminButtonText}>Analytics</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Temperature Thresholds Section */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Temperature Thresholds</Text>
-                {!isEditingThresholds ? (
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => setIsEditingThresholds(true)}
-                  >
-                    <Ionicons name="pencil" size={20} color="#0891b2" />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.saveButton}
-                    onPress={handleSaveThresholds}
-                  >
-                    <Text style={styles.saveButtonText}>Save</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              <View style={styles.thresholdsContainer}>
-                <View style={styles.thresholdItem}>
-                  <Text style={styles.thresholdLabel}>Too Cold</Text>
-                  {isEditingThresholds ? (
-                    <TextInput
-                      style={styles.thresholdInput}
-                      value={thresholds.tooCold.toString()}
-                      onChangeText={(text) =>
-                        setThresholds({ ...thresholds, tooCold: Number(text) })
-                      }
-                      keyboardType="numeric"
-                      placeholder="°C"
-                    />
-                  ) : (
-                    <Text style={styles.thresholdValue}>{thresholds.tooCold}°C</Text>
-                  )}
-                </View>
-                <View style={styles.thresholdItem}>
-                  <Text style={styles.thresholdLabel}>Warming Up</Text>
-                  {isEditingThresholds ? (
-                    <TextInput
-                      style={styles.thresholdInput}
-                      value={thresholds.warmingUp.toString()}
-                      onChangeText={(text) =>
-                        setThresholds({ ...thresholds, warmingUp: Number(text) })
-                      }
-                      keyboardType="numeric"
-                      placeholder="°C"
-                    />
-                  ) : (
-                    <Text style={styles.thresholdValue}>{thresholds.warmingUp}°C</Text>
-                  )}
-                </View>
-                <View style={styles.thresholdItem}>
-                  <Text style={styles.thresholdLabel}>Too Hot</Text>
-                  {isEditingThresholds ? (
-                    <TextInput
-                      style={styles.thresholdInput}
-                      value={thresholds.tooHot.toString()}
-                      onChangeText={(text) =>
-                        setThresholds({ ...thresholds, tooHot: Number(text) })
-                      }
-                      keyboardType="numeric"
-                      placeholder="°C"
-                    />
-                  ) : (
-                    <Text style={styles.thresholdValue}>{thresholds.tooHot}°C</Text>
-                  )}
-                </View>
-                <View style={styles.thresholdItem}>
-                  <Text style={styles.thresholdLabel}>Critical</Text>
-                  {isEditingThresholds ? (
-                    <TextInput
-                      style={styles.thresholdInput}
-                      value={thresholds.critical.toString()}
-                      onChangeText={(text) =>
-                        setThresholds({ ...thresholds, critical: Number(text) })
-                      }
-                      keyboardType="numeric"
-                      placeholder="°C"
-                    />
-                  ) : (
-                    <Text style={styles.thresholdValue}>{thresholds.critical}°C</Text>
-                  )}
-                </View>
-              </View>
             </View>
 
             {/* Storeroom Overview */}
@@ -554,14 +325,7 @@ export default function AdminDashboard() {
 
           {/* Fixed Bottom Navbar */}
           <View style={styles.navbarContainer}>
-            <Navbar
-              onRefresh={handleRefresh}
-              onNavigateProfile={() => router.push("/screens/profile")}
-              onNavigateHome={() => router.replace("/screens/admin/dashboard")}
-              onNavigateAlerts={() => router.push("/screens/alerts")}
-              alerts={alerts}
-              activeTab="home"
-            />
+            <AdminNavbar />
           </View>
         </View>
       )}
