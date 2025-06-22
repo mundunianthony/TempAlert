@@ -65,7 +65,7 @@ export default function RoomsScreen() {
     max_temperature: '',
   });
 
-  const [createWithThreshold, setCreateWithThreshold] = useState(false);
+  const [createWithThreshold, setCreateWithThreshold] = useState(true);
 
   useEffect(() => {
     if (!user || !isAdmin) {
@@ -121,19 +121,17 @@ export default function RoomsScreen() {
       return;
     }
 
-    if (createWithThreshold) {
-      if (!newThreshold.min_temperature || !newThreshold.max_temperature) {
-        Alert.alert('Error', 'Please fill in all threshold fields');
-        return;
-      }
+    if (!newThreshold.min_temperature || !newThreshold.max_temperature) {
+      Alert.alert('Error', 'Please fill in all threshold fields');
+      return;
+    }
 
-      const minTemp = parseFloat(newThreshold.min_temperature);
-      const maxTemp = parseFloat(newThreshold.max_temperature);
+    const minTemp = parseFloat(newThreshold.min_temperature);
+    const maxTemp = parseFloat(newThreshold.max_temperature);
 
-      if (minTemp >= maxTemp) {
-        Alert.alert('Error', 'Minimum temperature must be less than maximum temperature');
-        return;
-      }
+    if (minTemp >= maxTemp) {
+      Alert.alert('Error', 'Minimum temperature must be less than maximum temperature');
+      return;
     }
 
     setCreateLoading(true);
@@ -156,32 +154,31 @@ export default function RoomsScreen() {
       if (roomResponse.ok && roomData.data) {
         const createdRoom = roomData.data;
         
-        // Create threshold if requested
-        if (createWithThreshold) {
-          const thresholdResponse = await fetch('https://tempalert.onensensy.com/api/thresholds', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              room_id: createdRoom.id,
-              min_temperature: parseFloat(newThreshold.min_temperature),
-              max_temperature: parseFloat(newThreshold.max_temperature),
-            }),
-          });
+        // Create threshold (now required)
+        const thresholdResponse = await fetch('https://tempalert.onensensy.com/api/thresholds', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            room_id: createdRoom.id,
+            min_temperature: minTemp,
+            max_temperature: maxTemp,
+          }),
+        });
 
-          if (!thresholdResponse.ok) {
-            console.warn('Room created but threshold creation failed');
-          }
+        if (!thresholdResponse.ok) {
+          Alert.alert('Error', 'Room created but threshold creation failed');
+          return;
         }
 
         Alert.alert('Success', 'Room created successfully');
         setShowCreateModal(false);
         setNewRoom({ name: '', description: '' });
         setNewThreshold({ min_temperature: '', max_temperature: '' });
-        setCreateWithThreshold(false);
+        setCreateWithThreshold(true);
         fetchData();
       } else {
         Alert.alert('Error', roomData.message || 'Failed to create room');
@@ -422,42 +419,26 @@ export default function RoomsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => setCreateWithThreshold(!createWithThreshold)}
-              >
-                <View style={[styles.checkbox, createWithThreshold && styles.checkboxChecked]}>
-                  {createWithThreshold && <Ionicons name="checkmark" size={16} color="#fff" />}
-                </View>
-                <Text style={styles.checkboxLabel}>Set temperature thresholds for this room</Text>
-              </TouchableOpacity>
+              <Text style={styles.label}>Minimum Temperature (°C) *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 10"
+                value={newThreshold.min_temperature}
+                onChangeText={(text) => setNewThreshold({ ...newThreshold, min_temperature: text })}
+                keyboardType="numeric"
+              />
             </View>
 
-            {createWithThreshold && (
-              <>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Minimum Temperature (°C) *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., 10"
-                    value={newThreshold.min_temperature}
-                    onChangeText={(text) => setNewThreshold({ ...newThreshold, min_temperature: text })}
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Maximum Temperature (°C) *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., 30"
-                    value={newThreshold.max_temperature}
-                    onChangeText={(text) => setNewThreshold({ ...newThreshold, max_temperature: text })}
-                    keyboardType="numeric"
-                  />
-                </View>
-              </>
-            )}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Maximum Temperature (°C) *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 30"
+                value={newThreshold.max_temperature}
+                onChangeText={(text) => setNewThreshold({ ...newThreshold, max_temperature: text })}
+                keyboardType="numeric"
+              />
+            </View>
 
             <TouchableOpacity
               style={[styles.submitButton, createLoading && styles.submitButtonDisabled]}
@@ -735,26 +716,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: '#3b82f6',
-  },
-  checkboxLabel: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#374151',
   },
 }); 

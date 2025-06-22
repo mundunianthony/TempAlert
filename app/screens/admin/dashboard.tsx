@@ -378,35 +378,10 @@ export default function AdminDashboard() {
 
               <View style={[styles.summaryCard, styles.summaryCardTertiary]}>
                 <View style={styles.summaryIconContainer}>
-                  <Ionicons name="thermometer" size={24} color="#8b5cf6" />
+                  <Ionicons name="cube" size={24} color="#8b5cf6" />
                 </View>
-                <Text style={styles.summaryValue}>{adminStats.totalSensors}</Text>
-                <Text style={styles.summaryLabel}>Total Sensors</Text>
-              </View>
-            </View>
-
-            {/* System Health */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>System Health</Text>
-            </View>
-            <View style={styles.systemHealthContainer}>
-              <View style={styles.healthCard}>
-                <View style={styles.healthIconContainer}>
-                  <Ionicons name="shield-checkmark" size={20} color="#10b981" />
-                </View>
-                <View style={styles.healthInfo}>
-                  <Text style={styles.healthValue}>{adminStats.roomsWithThresholds}</Text>
-                  <Text style={styles.healthLabel}>Rooms with Thresholds</Text>
-                </View>
-              </View>
-              <View style={styles.healthCard}>
-                <View style={styles.healthIconContainer}>
-                  <Ionicons name="cube" size={20} color="#3b82f6" />
-                </View>
-                <View style={styles.healthInfo}>
-                  <Text style={styles.healthValue}>{storerooms.length}</Text>
-                  <Text style={styles.healthLabel}>Total Rooms</Text>
-                </View>
+                <Text style={styles.summaryValue}>{storerooms.length}</Text>
+                <Text style={styles.summaryLabel}>Total Rooms</Text>
               </View>
             </View>
 
@@ -771,39 +746,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-  },
-  systemHealthContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  healthCard: {
-    width: "48%",
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  healthIconContainer: {
-    marginBottom: 8,
-  },
-  healthInfo: {
-    alignItems: "center",
-  },
-  healthValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#0f172a",
-    marginBottom: 4,
-  },
-  healthLabel: {
-    fontSize: 12,
-    color: "#64748b",
   },
 });
