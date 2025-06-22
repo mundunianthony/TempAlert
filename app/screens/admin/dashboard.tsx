@@ -31,7 +31,7 @@ interface Storeroom {
   name: string;
   temperature: number;
   status: "Normal" | "Warning" | "Critical";
-  lastUpdated: Timestamp;
+  lastUpdated: Date;
 }
 
 interface TemperatureThresholds {
@@ -42,7 +42,7 @@ interface TemperatureThresholds {
 }
 
 export default function AdminDashboard() {
-  const { user, lastName, logout, isAdmin, token } = useAuth();
+  const { user, logout, isAdmin, token } = useAuth();
   const router = useRouter();
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function AdminDashboard() {
       .map((room) => ({
         message: getAlertMessage(room.temperature, room.name),
         timestamp: room.lastUpdated
-          ? room.lastUpdated.toDate().toISOString()
+          ? room.lastUpdated.toISOString()
           : "",
         temperature: room.temperature,
         storeroomName: room.name,
@@ -323,7 +323,7 @@ export default function AdminDashboard() {
         <View>
           <Text style={styles.welcomeText}>Welcome back</Text>
           <Text style={styles.greeting}>
-            {lastName || user.displayName || "User"} 👋
+            {user.name || "User"} 👋
           </Text>
         </View>
         <TouchableOpacity
@@ -527,7 +527,7 @@ export default function AdminDashboard() {
                       <Text style={styles.roomName}>{room.name}</Text>
                       <Text style={styles.lastUpdated}>
                         Updated{" "}
-                        {timeAgo(room.lastUpdated?.toDate().toISOString() || "")}
+                        {timeAgo(room.lastUpdated.toISOString())}
                       </Text>
                     </View>
 
