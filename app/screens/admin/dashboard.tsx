@@ -46,6 +46,12 @@ export default function AdminDashboard() {
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [adminStats, setAdminStats] = useState({
+    totalUsers: 0,
+    totalSensors: 0,
+    activeAlerts: 0,
+    roomsWithThresholds: 0,
+  });
 
   const alerts = useMemo(() => {
     return storerooms
@@ -90,9 +96,9 @@ export default function AdminDashboard() {
 
     setLoading(true);
 
-    const fetchDashboardData = async () => {
+    const fetchAdminDashboardData = async () => {
       try {
-        // Fetch rooms with thresholds
+        // Fetch ALL rooms in the system (admin has access to everything)
         const roomsResponse = await fetch('https://tempalert.onensensy.com/api/rooms', {
           headers: {
             'Accept': 'application/json',
@@ -101,6 +107,27 @@ export default function AdminDashboard() {
         });
         const roomsData = await roomsResponse.json();
         const rooms = roomsData.data || [];
+
+        // Fetch admin statistics
+        const [usersResponse, sensorsResponse] = await Promise.all([
+          fetch('https://tempalert.onensensy.com/api/users', {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          }),
+          fetch('https://tempalert.onensensy.com/api/sensors', {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          }),
+        ]);
+
+        const usersData = await usersResponse.json();
+        const sensorsData = await sensorsResponse.json();
+        const totalUsers = usersData.data?.length || 0;
+        const totalSensors = sensorsData.data?.length || 0;
 
         // Fetch thresholds for each room
         const roomsWithThresholds = await Promise.all(
@@ -119,50 +146,48 @@ export default function AdminDashboard() {
               let currentTemperature = null;
               let lastReadingTime = null;
               
-              if (threshold) {
-                try {
-                  const sensorsResponse = await fetch(`https://tempalert.onensensy.com/api/sensors?options[room_id]=${room.id}`, {
-                    headers: {
-                      'Accept': 'application/json',
-                      'Authorization': `Bearer ${token}`,
-                    },
-                  });
-                  const sensorsData = await sensorsResponse.json();
-                  const sensors = sensorsData.data || [];
+              try {
+                const sensorsResponse = await fetch(`https://tempalert.onensensy.com/api/sensors?options[room_id]=${room.id}`, {
+                  headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                  },
+                });
+                const sensorsData = await sensorsResponse.json();
+                const sensors = sensorsData.data || [];
 
-                  if (sensors.length > 0) {
-                    // Get latest temperature reading from any sensor in this room
-                    const latestReadings = await Promise.all(
-                      sensors.map(async (sensor: any) => {
-                        try {
-                          const readingsResponse = await fetch(`https://tempalert.onensensy.com/api/temperature-readings?options[sensor_id]=${sensor.id}`, {
-                            headers: {
-                              'Accept': 'application/json',
-                              'Authorization': `Bearer ${token}`,
-                            },
-                          });
-                          const readingsData = await readingsResponse.json();
-                          return readingsData.data || [];
-                        } catch (error) {
-                          console.error('Error fetching readings for sensor:', sensor.id, error);
-                          return [];
-                        }
-                      })
-                    );
+                if (sensors.length > 0) {
+                  // Get latest temperature reading from any sensor in this room
+                  const latestReadings = await Promise.all(
+                    sensors.map(async (sensor: any) => {
+                      try {
+                        const readingsResponse = await fetch(`https://tempalert.onensensy.com/api/temperature-readings?options[sensor_id]=${sensor.id}`, {
+                          headers: {
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                          },
+                        });
+                        const readingsData = await readingsResponse.json();
+                        return readingsData.data || [];
+                      } catch (error) {
+                        console.error('Error fetching readings for sensor:', sensor.id, error);
+                        return [];
+                      }
+                    })
+                  );
 
-                    // Find the latest reading across all sensors
-                    const allReadings = latestReadings.flat();
-                    if (allReadings.length > 0) {
-                      const latestReading = allReadings.sort((a: any, b: any) => 
-                        new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
-                      )[0];
-                      currentTemperature = latestReading.temperature_value;
-                      lastReadingTime = latestReading.recorded_at;
-                    }
+                  // Find the latest reading across all sensors
+                  const allReadings = latestReadings.flat();
+                  if (allReadings.length > 0) {
+                    const latestReading = allReadings.sort((a: any, b: any) => 
+                      new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
+                    )[0];
+                    currentTemperature = latestReading.temperature_value;
+                    lastReadingTime = latestReading.recorded_at;
                   }
-                } catch (error) {
-                  console.error('Error fetching temperature readings for room:', room.id, error);
                 }
+              } catch (error) {
+                console.error('Error fetching temperature readings for room:', room.id, error);
               }
 
               return {
@@ -181,15 +206,26 @@ export default function AdminDashboard() {
           })
         );
 
+        // Calculate admin statistics
+        const roomsWithThresholdsCount = roomsWithThresholds.filter(room => room.threshold).length;
+        const activeAlertsCount = alerts.length;
+
+        setAdminStats({
+          totalUsers,
+          totalSensors,
+          activeAlerts: activeAlertsCount,
+          roomsWithThresholds: roomsWithThresholdsCount,
+        });
+
         setStorerooms(roomsWithThresholds);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error('Error fetching admin dashboard data:', error);
         setLoading(false);
       }
     };
 
-    fetchDashboardData();
+    fetchAdminDashboardData();
   }, [user, router, refreshKey, isAdmin]);
 
   const getStatusColor = (room: Storeroom) => {
@@ -289,9 +325,9 @@ export default function AdminDashboard() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.welcomeText}>Welcome back</Text>
+          <Text style={styles.welcomeText}>Welcome back, Admin</Text>
           <Text style={styles.greeting}>
-            {user.name || "User"} 👋
+            {user.name || "Administrator"} 👋
           </Text>
         </View>
         <TouchableOpacity
@@ -323,19 +359,10 @@ export default function AdminDashboard() {
             <View style={styles.summaryContainer}>
               <View style={[styles.summaryCard, styles.summaryCardPrimary]}>
                 <View style={styles.summaryIconContainer}>
-                  <Ionicons name="thermometer" size={24} color="#0891b2" />
+                  <Ionicons name="people" size={24} color="#0891b2" />
                 </View>
-                <Text style={styles.summaryValue}>
-                  {storerooms.length > 0
-                    ? (() => {
-                        const roomsWithTemp = storerooms.filter(room => room.current_temperature !== null && room.current_temperature !== undefined);
-                        if (roomsWithTemp.length === 0) return "N/A";
-                        const avgTemp = roomsWithTemp.reduce((sum, room) => sum + room.current_temperature!, 0) / roomsWithTemp.length;
-                        return `${Math.round(avgTemp)}°C`;
-                      })()
-                    : "N/A"}
-                </Text>
-                <Text style={styles.summaryLabel}>Avg Temp</Text>
+                <Text style={styles.summaryValue}>{adminStats.totalUsers}</Text>
+                <Text style={styles.summaryLabel}>Total Users</Text>
               </View>
               <TouchableOpacity
                 style={[styles.summaryCard, styles.summaryCardSecondary]}
@@ -345,16 +372,41 @@ export default function AdminDashboard() {
                 <View style={styles.summaryIconContainer}>
                   <Ionicons name="alert-circle" size={24} color="#f59e0b" />
                 </View>
-                <Text style={styles.summaryValue}>{alerts.length}</Text>
-                <Text style={styles.summaryLabel}>Alerts</Text>
+                <Text style={styles.summaryValue}>{adminStats.activeAlerts}</Text>
+                <Text style={styles.summaryLabel}>Active Alerts</Text>
               </TouchableOpacity>
 
               <View style={[styles.summaryCard, styles.summaryCardTertiary]}>
                 <View style={styles.summaryIconContainer}>
-                  <Ionicons name="cube" size={24} color="#8b5cf6" />
+                  <Ionicons name="thermometer" size={24} color="#8b5cf6" />
                 </View>
-                <Text style={styles.summaryValue}>{storerooms.length}</Text>
-                <Text style={styles.summaryLabel}>Storerooms</Text>
+                <Text style={styles.summaryValue}>{adminStats.totalSensors}</Text>
+                <Text style={styles.summaryLabel}>Total Sensors</Text>
+              </View>
+            </View>
+
+            {/* System Health */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>System Health</Text>
+            </View>
+            <View style={styles.systemHealthContainer}>
+              <View style={styles.healthCard}>
+                <View style={styles.healthIconContainer}>
+                  <Ionicons name="shield-checkmark" size={20} color="#10b981" />
+                </View>
+                <View style={styles.healthInfo}>
+                  <Text style={styles.healthValue}>{adminStats.roomsWithThresholds}</Text>
+                  <Text style={styles.healthLabel}>Rooms with Thresholds</Text>
+                </View>
+              </View>
+              <View style={styles.healthCard}>
+                <View style={styles.healthIconContainer}>
+                  <Ionicons name="cube" size={20} color="#3b82f6" />
+                </View>
+                <View style={styles.healthInfo}>
+                  <Text style={styles.healthValue}>{storerooms.length}</Text>
+                  <Text style={styles.healthLabel}>Total Rooms</Text>
+                </View>
               </View>
             </View>
 
@@ -719,5 +771,39 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  systemHealthContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  healthCard: {
+    width: "48%",
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  healthIconContainer: {
+    marginBottom: 8,
+  },
+  healthInfo: {
+    alignItems: "center",
+  },
+  healthValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 4,
+  },
+  healthLabel: {
+    fontSize: 12,
+    color: "#64748b",
   },
 });
