@@ -37,6 +37,8 @@ export default function UsersScreen() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
 
   const [newUser, setNewUser] = useState({
     name: '',
@@ -130,7 +132,6 @@ export default function UsersScreen() {
           role: newUser.role,
         }),
       });
-
       const data = await response.json();
       if (response.ok && data.data) {
         Alert.alert('Success', 'User created successfully');
@@ -145,7 +146,14 @@ export default function UsersScreen() {
         });
         fetchUsers();
       } else {
-        Alert.alert('Error', data.message || 'Failed to create user');
+        // Show detailed validation errors if present
+        let errorMsg = data.message || 'Failed to create user';
+        if (data.errors && typeof data.errors === 'object') {
+          errorMsg = Object.entries(data.errors)
+            .map(([field, msgs]) => `${field}: ${(Array.isArray(msgs) ? msgs.join(', ') : msgs)}`)
+            .join('\n');
+        }
+        Alert.alert('Error', errorMsg);
       }
     } catch (error) {
       console.error('Error creating user:', error);
@@ -413,24 +421,34 @@ export default function UsersScreen() {
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Password *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter password"
-                value={newUser.password}
-                onChangeText={(text) => setNewUser({ ...newUser, password: text })}
-                secureTextEntry
-              />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="Enter password"
+                  value={newUser.password}
+                  onChangeText={(text) => setNewUser({ ...newUser, password: text })}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)} style={{ marginLeft: 8 }}>
+                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#64748b" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Confirm Password *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm password"
-                value={newUser.password_confirmation}
-                onChangeText={(text) => setNewUser({ ...newUser, password_confirmation: text })}
-                secureTextEntry
-              />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="Confirm password"
+                  value={newUser.password_confirmation}
+                  onChangeText={(text) => setNewUser({ ...newUser, password_confirmation: text })}
+                  secureTextEntry={!showPasswordConfirmation}
+                />
+                <TouchableOpacity onPress={() => setShowPasswordConfirmation((prev) => !prev)} style={{ marginLeft: 8 }}>
+                  <Ionicons name={showPasswordConfirmation ? 'eye-off' : 'eye'} size={20} color="#64748b" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.formGroup}>

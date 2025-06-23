@@ -17,6 +17,8 @@ import { useAuth } from '../../../src/context/AuthContext';
 import { useRouter } from 'expo-router';
 import AdminNavbar from './Navbar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { saveDemoRoomThreshold } from '../../../src/utils/localThresholds';
+import { isDummyRoom } from '../../../src/utils/dummyDataGenerator';
 
 interface Room {
   id: number;
@@ -323,15 +325,12 @@ export default function RoomsScreen() {
       Alert.alert('Error', 'Please fill in all threshold fields');
       return;
     }
-
     const minTemp = parseFloat(newThreshold.min_temperature);
     const maxTemp = parseFloat(newThreshold.max_temperature);
-
     if (minTemp >= maxTemp) {
       Alert.alert('Error', 'Minimum temperature must be less than maximum temperature');
       return;
     }
-
     setThresholdLoading(true);
     try {
       const thresholdRequestData = {
@@ -339,9 +338,6 @@ export default function RoomsScreen() {
         min_temperature: minTemp.toString(),
         max_temperature: maxTemp.toString(),
       };
-      
-      console.log('Creating threshold with data:', thresholdRequestData);
-      
       const response = await fetch('https://tempalert.onensensy.com/api/thresholds', {
         method: 'POST',
         headers: {
@@ -351,7 +347,6 @@ export default function RoomsScreen() {
         },
         body: JSON.stringify(thresholdRequestData),
       });
-
       const data = await response.json();
       if (response.ok && data.data) {
         Alert.alert('Success', 'Threshold created successfully');
@@ -360,12 +355,32 @@ export default function RoomsScreen() {
         setSelectedRoom(null);
         fetchData();
       } else {
-        console.error('Threshold creation error:', data);
-        Alert.alert('Error', data.message || 'Failed to create threshold');
+        // If backend fails, check if dummy room and save locally
+        const dummy = await isDummyRoom(selectedRoom.id);
+        if (dummy) {
+          await saveDemoRoomThreshold(selectedRoom.id, { min_temperature: minTemp, max_temperature: maxTemp });
+          Alert.alert('Success', 'Threshold set successfully.');
+          setShowThresholdModal(false);
+          setNewThreshold({ min_temperature: '', max_temperature: '' });
+          setSelectedRoom(null);
+          fetchData();
+        } else {
+          Alert.alert('Error', data.message || 'Failed to create threshold');
+        }
       }
     } catch (error) {
-      console.error('Error creating threshold:', error);
-      Alert.alert('Error', 'Failed to create threshold');
+      // Network or other error: fallback to local for dummy
+      const dummy = await isDummyRoom(selectedRoom.id);
+      if (dummy) {
+        await saveDemoRoomThreshold(selectedRoom.id, { min_temperature: minTemp, max_temperature: maxTemp });
+        Alert.alert('Success', 'Threshold set successfully.');
+        setShowThresholdModal(false);
+        setNewThreshold({ min_temperature: '', max_temperature: '' });
+        setSelectedRoom(null);
+        fetchData();
+      } else {
+        Alert.alert('Error', 'Failed to create threshold');
+      }
     } finally {
       setThresholdLoading(false);
     }

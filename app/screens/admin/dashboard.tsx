@@ -22,6 +22,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdminNavbar from './Navbar';
 import { isDummyRoom, getDummyRoomData, getFirstRoomId, getTimeAgo } from "../../../src/utils/dummyDataGenerator";
+import { saveDemoRoomThreshold, getDemoRoomThreshold } from '../../../src/utils/localThresholds';
 
 interface Storeroom {
   id: number;
@@ -142,18 +143,20 @@ export default function AdminDashboard() {
                 },
               });
               const thresholdData = await thresholdResponse.json();
-              const threshold = thresholdData.data?.[0] || null;
-
-              // Check if this is a dummy room
+              let threshold = thresholdData.data?.[0] || null;
               const isDummy = await isDummyRoom(room.id);
               let currentTemperature = null;
               let lastReadingTime = null;
-              
               if (isDummy) {
                 // Use dummy data for non-first rooms
                 const dummyData = await getDummyRoomData(room.id, room.name);
                 currentTemperature = dummyData.currentTemperature;
                 lastReadingTime = dummyData.lastUpdated;
+                // Try to get locally saved threshold
+                const localThreshold = await getDemoRoomThreshold(room.id);
+                if (localThreshold) {
+                  threshold = localThreshold;
+                }
               } else if (threshold && room.id === firstRoomId) {
                 // Use real sensor data for the first room
                 try {
@@ -165,7 +168,6 @@ export default function AdminDashboard() {
                   });
                   const sensorsData = await sensorsResponse.json();
                   const sensors = sensorsData.data || [];
-
                   if (sensors.length > 0) {
                     // Get latest temperature reading from any sensor in this room
                     const latestReadings = await Promise.all(
@@ -185,7 +187,6 @@ export default function AdminDashboard() {
                         }
                       })
                     );
-
                     // Find the latest reading across all sensors
                     const allReadings = latestReadings.flat();
                     if (allReadings.length > 0) {
@@ -200,7 +201,6 @@ export default function AdminDashboard() {
                   console.error('Error fetching temperature readings for room:', room.id, error);
                 }
               }
-
               return {
                 ...room,
                 threshold: threshold ? {
