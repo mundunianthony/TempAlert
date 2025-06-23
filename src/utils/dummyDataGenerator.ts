@@ -139,4 +139,25 @@ export const isDummyRoom = async (roomId: number): Promise<boolean> => {
 export const getFirstRoomId = async (): Promise<number | null> => {
     const config = await getRoomConfiguration();
     return config.firstRoomId;
-}; 
+};
+
+// Utility: Get human-readable relative time from a timestamp
+export function getTimeAgo(timestamp: string): string {
+    if (!timestamp) return "Unknown time";
+    const now = new Date();
+    const date = new Date(timestamp);
+    const diffSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (diffSeconds < 60) {
+        return "Just now";
+    }
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) {
+        return `${diffMinutes} ${diffMinutes === 1 ? "min" : "mins"} ago`;
+    }
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+        return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
+    }
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
+} 

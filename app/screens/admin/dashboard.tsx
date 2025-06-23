@@ -19,13 +19,9 @@ import {
   MaterialIcons,
   Ionicons,
 } from "@expo/vector-icons";
-// import { getFirestore } from "../../../src/lib/firebase";
-// import { collection, onSnapshot, Timestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdminNavbar from './Navbar';
-import { isDummyRoom, getDummyRoomData, getFirstRoomId } from "../../../src/utils/dummyDataGenerator";
-
-// const database = getFirestore();
+import { isDummyRoom, getDummyRoomData, getFirstRoomId, getTimeAgo } from "../../../src/utils/dummyDataGenerator";
 
 interface Storeroom {
   id: number;
@@ -224,12 +220,11 @@ export default function AdminDashboard() {
 
         // Calculate admin statistics
         const roomsWithThresholdsCount = roomsWithThresholds.filter(room => room.threshold).length;
-        const activeAlertsCount = alerts.length;
 
         setAdminStats({
           totalUsers,
           totalSensors,
-          activeAlerts: activeAlertsCount,
+          activeAlerts: 0, // Will be updated after alerts calculation
           roomsWithThresholds: roomsWithThresholdsCount,
         });
 
@@ -243,6 +238,14 @@ export default function AdminDashboard() {
 
     fetchAdminDashboardData();
   }, [user, router, refreshKey, isAdmin]);
+
+  // Update admin stats when alerts change
+  useEffect(() => {
+    setAdminStats(prev => ({
+      ...prev,
+      activeAlerts: alerts.length,
+    }));
+  }, [alerts]);
 
   const getStatusColor = (room: Storeroom) => {
     if (!room.current_temperature || !room.threshold) {
@@ -272,7 +275,7 @@ export default function AdminDashboard() {
     const max = room.threshold.max_temperature;
 
     if (temp < min) {
-      return <Ionicons name="thermometer-outline" size={18} color="#3b82f6" />;
+      return <Ionicons name="snow" size={18} color="#3b82f6" />;
     } else if (temp > max) {
       return <Ionicons name="flame" size={18} color="#ef4444" />;
     } else {
@@ -296,33 +299,6 @@ export default function AdminDashboard() {
     } else {
       return "Normal";
     }
-  };
-
-  const timeAgo = (timestamp: string) => {
-    if (!timestamp) return "Unknown time";
-
-    const now = new Date();
-    const alertTime = new Date(timestamp);
-    const diffSeconds = Math.floor(
-      (now.getTime() - alertTime.getTime()) / 1000
-    );
-
-    if (diffSeconds < 60) {
-      return "Just now";
-    }
-
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    if (diffMinutes < 60) {
-      return `${diffMinutes} ${diffMinutes === 1 ? "min" : "mins"} ago`;
-    }
-
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) {
-      return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
-    }
-
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
   };
 
   if (!user || !isAdmin) {
@@ -387,7 +363,6 @@ export default function AdminDashboard() {
                 <Text style={styles.summaryValue}>{adminStats.activeAlerts}</Text>
                 <Text style={styles.summaryLabel}>Active Alerts</Text>
               </View>
-
               <View style={[styles.summaryCard, styles.summaryCardTertiary]}>
                 <View style={styles.summaryIconContainer}>
                   <Ionicons name="cube" size={24} color="#8b5cf6" />
@@ -442,32 +417,38 @@ export default function AdminDashboard() {
                     ]}
                   >
                     <View style={styles.storeroomInfo}>
-                      <Text style={styles.roomName}>{room.name}</Text>
-                      <Text style={styles.lastUpdated}>
-                        {room.last_reading_time 
-                          ? `Updated ${timeAgo(room.last_reading_time)}`
-                          : "No recent readings"
-                        }
-                        {room.is_dummy && (
-                          <Text style={styles.dummyIndicator}> • Simulated</Text>
-                        )}
-                      </Text>
-                    </View>
-
-                    <View style={styles.temperatureContainer}>
-                      <Text style={styles.temperatureValue}>
-                        {room.current_temperature ? `${room.current_temperature}°C` : "N/A"}
-                      </Text>
-                      <View
-                        style={[styles.statusBadge, getStatusColor(room)]}
-                      >
-                        {getStatusIcon(room)}
-                        <Text
-                          style={[styles.statusText, getStatusColor(room)]}
-                        >
-                          {getStatusText(room)}
+                      <View style={styles.storeroomHeader}>
+                        <Text style={styles.storeroomName}>{room.name}</Text>
+                        <View style={styles.statusContainer}>
+                          {getStatusIcon(room)}
+                          <Text style={[styles.statusText, getStatusColor(room)]}>
+                            {getStatusText(room)}
+                          </Text>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.storeroomDetails}>
+                        <Text style={styles.temperatureText}>
+                          {room.current_temperature !== null && room.current_temperature !== undefined
+                            ? `${room.current_temperature}°C`
+                            : "No data"}
+                        </Text>
+                        <Text style={styles.lastUpdatedText}>
+                          Updated {room.last_reading_time ? getTimeAgo(room.last_reading_time) : "Unknown time"}
                         </Text>
                       </View>
+
+                      {room.threshold && (
+                        <Text style={styles.thresholdText}>
+                          Range: {room.threshold.min_temperature}°C - {room.threshold.max_temperature}°C
+                        </Text>
+                      )}
+
+                      {room.is_dummy && (
+                        <View style={styles.dummyBadge}>
+                          <Text style={styles.dummyBadgeText}>Demo Data</Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                 ))
@@ -475,10 +456,7 @@ export default function AdminDashboard() {
             </View>
           </ScrollView>
 
-          {/* Fixed Bottom Navbar */}
-          <View style={styles.navbarContainer}>
-            <AdminNavbar />
-          </View>
+          <AdminNavbar />
         </View>
       )}
     </View>
@@ -490,9 +468,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8fafc",
   },
-  contentContainer: {
-    flex: 1,
-    position: 'relative',
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 16,
+    backgroundColor: "#f8fafc",
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: "#64748b",
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginTop: 4,
+  },
+  logoutButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f1f5f9",
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingContainer: {
     flex: 1,
@@ -504,36 +505,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: "#64748b",
+    textAlign: "center",
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 24,
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: "#64748b",
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#0f172a",
-  },
-  logoutButton: {
-    padding: 8,
+  contentContainer: {
+    flex: 1,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingBottom: 100, // Add padding to account for fixed navbar
+    paddingBottom: 100,
   },
   summaryContainer: {
     flexDirection: "row",
@@ -541,11 +523,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   summaryCard: {
-    width: "31%",
+    flex: 1,
+    backgroundColor: "#ffffff",
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
+    marginHorizontal: 4,
     alignItems: "center",
-    justifyContent: "center",
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -553,19 +536,28 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   summaryCardPrimary: {
-    backgroundColor: "#e0f2fe",
+    borderLeftWidth: 4,
+    borderLeftColor: "#0891b2",
   },
   summaryCardSecondary: {
-    backgroundColor: "#fef3c7",
+    borderLeftWidth: 4,
+    borderLeftColor: "#f59e0b",
   },
   summaryCardTertiary: {
-    backgroundColor: "#ede9fe",
+    borderLeftWidth: 4,
+    borderLeftColor: "#8b5cf6",
   },
   summaryIconContainer: {
-    marginBottom: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#f1f5f9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
   },
   summaryValue: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#0f172a",
     marginBottom: 4,
@@ -573,166 +565,18 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 12,
     color: "#64748b",
-  },
-  adminControls: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 24,
-    backgroundColor: "#ffffff",
-    marginBottom: 24,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  adminButton: {
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: "#f1f5f9",
-    borderRadius: 8,
-    width: "30%",
-  },
-  adminButtonText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#0f172a",
     textAlign: "center",
-  },
-  section: {
-    marginBottom: 24,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#0f172a",
-  },
-  editButton: {
-    padding: 8,
-  },
-  saveButton: {
-    backgroundColor: "#0891b2",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  saveButtonText: {
-    color: "#ffffff",
-    fontWeight: "600",
-  },
-  thresholdsContainer: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  thresholdItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
-  },
-  thresholdLabel: {
-    fontSize: 16,
-    color: "#0f172a",
-  },
-  thresholdValue: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#0891b2",
-  },
-  thresholdInput: {
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 8,
-    padding: 8,
-    width: 80,
-    textAlign: "center",
-  },
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  storeroomItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  storeroomInfo: {
-    flex: 1,
-  },
-  roomName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#0f172a",
-    marginBottom: 4,
-  },
-  lastUpdated: {
-    fontSize: 12,
-    color: "#64748b",
-  },
-  temperatureContainer: {
-    alignItems: "flex-end",
-  },
-  temperatureValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#0f172a",
-    marginBottom: 4,
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginLeft: 4,
-  },
-  statusNormal: {
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    color: "#10b981",
-  },
-  statusLow: {
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
-    color: "#3b82f6",
-  },
-  statusHigh: {
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-    color: "#ef4444",
-  },
-  statusUnknown: {
-    backgroundColor: "rgba(107, 114, 128, 0.1)",
-    color: "#6b7280",
-  },
-  divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
   },
   refreshButton: {
     width: 36,
@@ -742,29 +586,122 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  adminControls: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  adminButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 4,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  adminButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#0891b2",
+    marginLeft: 8,
+  },
+  card: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    marginBottom: 24,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
   emptyStateText: {
-    fontSize: 16,
-    color: "#64748b",
+    padding: 24,
     textAlign: "center",
-    paddingVertical: 24,
+    color: "#64748b",
+    fontSize: 16,
   },
-  navbarContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  storeroomItem: {
+    padding: 20,
   },
-  dummyIndicator: {
+  divider: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  storeroomInfo: {
+    flex: 1,
+  },
+  storeroomHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  storeroomName: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#0f172a",
+    flex: 1,
+  },
+  statusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 6,
+  },
+  statusNormal: {
+    color: "#10b981",
+  },
+  statusLow: {
+    color: "#3b82f6",
+  },
+  statusHigh: {
+    color: "#ef4444",
+  },
+  statusUnknown: {
+    color: "#6b7280",
+  },
+  storeroomDetails: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  temperatureText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  lastUpdatedText: {
     fontSize: 12,
     color: "#64748b",
-    fontStyle: "italic",
+  },
+  thresholdText: {
+    fontSize: 12,
+    color: "#94a3b8",
+    marginBottom: 8,
+  },
+  dummyBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#f59e0b",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  dummyBadgeText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "600",
   },
 });
+
