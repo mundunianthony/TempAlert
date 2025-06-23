@@ -21,6 +21,8 @@ import {
 } from "@expo/vector-icons";
 import Navbar from "../../src/components/Navbar";
 import { isDummyRoom, getDummyRoomData, getFirstRoomId } from "../../src/utils/dummyDataGenerator";
+import { getDemoRoomThreshold } from '../../src/utils/localThresholds';
+import { fetchAllAlertsWithDummyCached, AlertLog } from '../../src/utils/alertsFetcher';
 
 interface Storeroom {
   id: number;
@@ -43,9 +45,10 @@ interface TemperatureDataPoint {
 }
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const router = useRouter();
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
+  const [alerts, setAlerts] = useState<AlertLog[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [expandedAlerts, setExpandedAlerts] = useState(false);
@@ -56,68 +59,59 @@ export default function Dashboard() {
       router.replace("/login");
       return;
     }
-
     setLoading(true);
-
+    // Fetch rooms and alerts
     const fetchDashboardData = async () => {
       try {
-        // Fetch rooms with thresholds
+        // Fetch rooms with thresholds (keep this for storeroom overview)
         const roomsResponse = await fetch('https://tempalert.onensensy.com/api/rooms', {
           headers: {
             'Accept': 'application/json',
-            'Authorization': `Bearer ${user.token || ''}`,
+            'Authorization': `Bearer ${token}`,
           },
         });
         const roomsData = await roomsResponse.json();
         const rooms = roomsData.data || [];
-
-        // Get the first room ID (real sensor room)
         const firstRoomId = await getFirstRoomId();
-
-        // Fetch thresholds for each room
         const roomsWithThresholds = await Promise.all(
           rooms.map(async (room: any) => {
             try {
               const thresholdResponse = await fetch(`https://tempalert.onensensy.com/api/thresholds?options[room_id]=${room.id}`, {
                 headers: {
                   'Accept': 'application/json',
-                  'Authorization': `Bearer ${user.token || ''}`,
+                  'Authorization': `Bearer ${token}`,
                 },
               });
-              const thresholdData = await thresholdResponse.json();
-              const threshold = thresholdData.data?.[0] || null;
-
-              // Check if this is a dummy room
+              let threshold = (await thresholdResponse.json()).data?.[0] || null;
               const isDummy = await isDummyRoom(room.id);
               let currentTemperature = null;
               let lastReadingTime = null;
-              
               if (isDummy) {
-                // Use dummy data for non-first rooms
                 const dummyData = await getDummyRoomData(room.id, room.name);
                 currentTemperature = dummyData.currentTemperature;
                 lastReadingTime = dummyData.lastUpdated;
+                const localThreshold = await getDemoRoomThreshold(room.id);
+                if (localThreshold) {
+                  threshold = localThreshold;
+                }
               } else if (threshold && room.id === firstRoomId) {
-                // Use real sensor data for the first room
                 try {
                   const sensorsResponse = await fetch(`https://tempalert.onensensy.com/api/sensors?options[room_id]=${room.id}`, {
                     headers: {
                       'Accept': 'application/json',
-                      'Authorization': `Bearer ${user.token || ''}`,
+                      'Authorization': `Bearer ${token}`,
                     },
                   });
                   const sensorsData = await sensorsResponse.json();
                   const sensors = sensorsData.data || [];
-
                   if (sensors.length > 0) {
-                    // Get latest temperature reading from any sensor in this room
                     const latestReadings = await Promise.all(
                       sensors.map(async (sensor: any) => {
                         try {
                           const readingsResponse = await fetch(`https://tempalert.onensensy.com/api/temperature-readings?options[sensor_id]=${sensor.id}`, {
                             headers: {
                               'Accept': 'application/json',
-                              'Authorization': `Bearer ${user.token || ''}`,
+                              'Authorization': `Bearer ${token}`,
                             },
                           });
                           const readingsData = await readingsResponse.json();
@@ -128,8 +122,6 @@ export default function Dashboard() {
                         }
                       })
                     );
-
-                    // Find the latest reading across all sensors
                     const allReadings = latestReadings.flat();
                     if (allReadings.length > 0) {
                       const latestReading = allReadings.sort((a: any, b: any) => 
@@ -143,7 +135,6 @@ export default function Dashboard() {
                   console.error('Error fetching temperature readings for room:', room.id, error);
                 }
               }
-
               return {
                 ...room,
                 threshold: threshold ? {
@@ -160,15 +151,16 @@ export default function Dashboard() {
             }
           })
         );
-
         setStorerooms(roomsWithThresholds);
+        // Fetch alerts (real + dummy)
+        const allAlerts = await fetchAllAlertsWithDummyCached(token);
+        setAlerts(allAlerts);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         setLoading(false);
       }
     };
-
     fetchDashboardData();
   }, [user, router, refreshKey]);
 
@@ -253,74 +245,34 @@ export default function Dashboard() {
     return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
   };
 
-  const getAlertMessage = (temperature: number, storeroomName: string) => {
-    if (temperature <= 15) {
+  // Helper to generate alert message for dashboard
+  function getAlertMessage(alert) {
+    const temperature = alert.temperature_value;
+    const storeroomName = alert.room?.name || `Room ${alert.room_id}`;
+    if (alert.alert_type === 'low' || temperature <= 15) {
       return `Temperature too low in ${storeroomName} (${temperature}°C)! Risk of freezing—check cooling system.`;
-    } else if (temperature >= 25 && temperature <= 30) {
-      return `Temperature warming up in ${storeroomName} (${temperature}°C)—monitor to prevent spoilage.`;
-    } else if (temperature >= 31 && temperature <= 40) {
-      return `Temperature too hot in ${storeroomName} (${temperature}°C)! Risk of spoilage—take action now.`;
-    } else if (temperature > 40) {
-      return `Critical heat in ${storeroomName} (${temperature}°C)! Immediate intervention required.`;
+    } else if (alert.alert_type === 'high' || temperature >= 25) {
+      if (temperature <= 30) {
+        return `Temperature warming up in ${storeroomName} (${temperature}°C)—monitor to prevent spoilage.`;
+      } else if (temperature <= 40) {
+        return `Temperature too hot in ${storeroomName} (${temperature}°C)! Risk of spoilage—take action now.`;
+      } else {
+        return `Critical heat in ${storeroomName} (${temperature}°C)! Immediate intervention required.`;
+      }
     }
-    return "No alert";
-  };
+    return `Temperature alert in ${storeroomName} (${temperature}°C)`;
+  }
 
-  const getAlertSeverity = (temperature: number) => {
-    if (temperature <= 15) {
-      return {
-        icon: <Ionicons name="snow" size={24} color="#3b82f6" />,
-        color: "#3b82f6", // Blue
-        bgColor: "#dbeafe", // Light blue
-        label: "Too Cold",
-      };
-    } else if (temperature >= 25 && temperature <= 30) {
-      return {
-        icon: <Ionicons name="alert-circle" size={24} color="#f59e0b" />,
-        color: "#f59e0b", // Amber
-        bgColor: "#fef3c7", // Light amber
-        label: "Warning",
-      };
-    } else if (temperature >= 31 && temperature <= 40) {
-      return {
-        icon: <Ionicons name="flame" size={24} color="#f97316" />,
-        color: "#f97316", // Orange
-        bgColor: "#ffedd5", // Light orange
-        label: "Too Hot",
-      };
-    } else if (temperature > 40) {
-      return {
-        icon: <Ionicons name="warning" size={24} color="#ef4444" />,
-        color: "#ef4444", // Red
-        bgColor: "#fee2e2", // Light red
-        label: "Critical",
-      };
-    }
-    return {
-      icon: <Ionicons name="information-circle" size={24} color="#6b7280" />,
-      color: "#6b7280", // Gray
-      bgColor: "#f3f4f6", // Light gray
-      label: "Info",
-    };
-  };
-
-  const alerts = useMemo(() => {
-    return storerooms
-      .filter((room) => {
-        if (!room.current_temperature || !room.threshold) return false;
-        const temp = room.current_temperature;
-        const min = room.threshold.min_temperature;
-        const max = room.threshold.max_temperature;
-        return temp < min || temp > max;
-      })
-      .map((room) => ({
-        message: getAlertMessage(room.current_temperature!, room.name),
-        timestamp: room.last_reading_time || "",
-        temperature: room.current_temperature!,
-        storeroomName: room.name,
-        isDummy: room.is_dummy || false,
-      }));
-  }, [storerooms]);
+  // For displaying alerts in the dashboard, map AlertLog to display format
+  const displayAlerts = alerts.map(alert => ({
+    message: getAlertMessage(alert),
+    timestamp: alert.triggered_at,
+    temperature: alert.temperature_value,
+    storeroomName: alert.room?.name || `Room ${alert.room_id}`,
+    isDummy: typeof alert.id === 'string' && String(alert.id).startsWith('dummy-'),
+  }));
+  const alertsToShow = expandedAlerts ? displayAlerts : displayAlerts.slice(0, 3);
+  const hasMoreAlerts = displayAlerts.length > 3;
 
   // Calculate average temperature
   const averageTemperature = useMemo(() => {
@@ -332,14 +284,52 @@ export default function Dashboard() {
     return Math.round(avgTemp);
   }, [storerooms]);
 
-  // Determine how many alerts to show
-  const alertsToShow = expandedAlerts ? alerts : alerts.slice(0, 3);
-  const hasMoreAlerts = alerts.length > 3;
-
   const handleRefresh = () => {
     setLoading(true);
     setRefreshKey((prevKey) => prevKey + 1);
   };
+
+  // Add getAlertSeverity for dashboard alerts
+  function getAlertSeverity(alert) {
+    const temperature = alert.temperature;
+    if (alert.alert_type === 'low' || temperature <= 15) {
+      return {
+        icon: <Ionicons name="snow" size={24} color="#3b82f6" />,
+        color: "#3b82f6", // Blue
+        bgColor: "#dbeafe", // Light blue
+        label: "Too Cold",
+      };
+    } else if (alert.alert_type === 'high' || temperature >= 25) {
+      if (temperature <= 30) {
+        return {
+          icon: <Ionicons name="alert-circle" size={24} color="#f59e0b" />,
+          color: "#f59e0b", // Amber
+          bgColor: "#fef3c7", // Light amber
+          label: "Warning",
+        };
+      } else if (temperature <= 40) {
+        return {
+          icon: <Ionicons name="flame" size={24} color="#f97316" />,
+          color: "#f97316", // Orange
+          bgColor: "#ffedd5", // Light orange
+          label: "Too Hot",
+        };
+      } else {
+        return {
+          icon: <Ionicons name="warning" size={24} color="#ef4444" />,
+          color: "#ef4444", // Red
+          bgColor: "#fee2e2", // Light red
+          label: "Critical",
+        };
+      }
+    }
+    return {
+      icon: <Ionicons name="information-circle" size={24} color="#6b7280" />,
+      color: "#6b7280", // Gray
+      bgColor: "#f3f4f6", // Light gray
+      label: "Info",
+    };
+  }
 
   if (!user) {
     return (
@@ -509,7 +499,7 @@ export default function Dashboard() {
             {alerts.length > 0 ? (
               <>
                 {alertsToShow.map((alert, index) => {
-                  const severity = getAlertSeverity(alert.temperature);
+                  const severity = getAlertSeverity(alert);
                   
                   return (
                     <View
@@ -566,7 +556,7 @@ export default function Dashboard() {
         onNavigateProfile={() => router.push("/screens/profile")}
         onNavigateHome={() => router.replace("/screens/dashboard")}
         onNavigateAlerts={() => router.push("/screens/alerts")}
-        alerts={alerts}
+        alerts={displayAlerts}
         activeTab="home"
       />
     </View>

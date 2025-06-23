@@ -423,16 +423,16 @@ export default function AdminDashboard() {
                           {getStatusIcon(room)}
                           <Text style={[styles.statusText, getStatusColor(room)]}>
                             {getStatusText(room)}
-                          </Text>
+                      </Text>
                         </View>
-                      </View>
-                      
+                    </View>
+
                       <View style={styles.storeroomDetails}>
                         <Text style={styles.temperatureText}>
                           {room.current_temperature !== null && room.current_temperature !== undefined
                             ? `${room.current_temperature}°C`
                             : "No data"}
-                        </Text>
+                      </Text>
                         <Text style={styles.lastUpdatedText}>
                           Updated {room.last_reading_time ? getTimeAgo(room.last_reading_time) : "Unknown time"}
                         </Text>
@@ -456,7 +456,7 @@ export default function AdminDashboard() {
             </View>
           </ScrollView>
 
-          <AdminNavbar />
+            <AdminNavbar />
         </View>
       )}
     </View>

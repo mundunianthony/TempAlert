@@ -16,6 +16,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../src/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import Navbar from "../../src/components/Navbar";
+import { isDummyRoom, getDummyRoomData } from "../../src/utils/dummyDataGenerator";
+import { getDemoRoomThreshold } from "../../src/utils/localThresholds";
 
 interface AlertLog {
   id: number;
@@ -65,13 +67,39 @@ export default function StoreroomDetails() {
         },
       });
       const data = await response.json();
-      const alertsData = data.data || [];
-      
+      let alertsData = data.data || [];
+
+      // If this is a dummy room, synthesize an alert if needed
+      const isDummy = await isDummyRoom(Number(storeroomId));
+      if (isDummy) {
+        const dummyData = await getDummyRoomData(Number(storeroomId), storeroomName || '');
+        let threshold = null;
+        try {
+          threshold = await getDemoRoomThreshold(Number(storeroomId));
+        } catch {}
+        if (threshold && dummyData.currentTemperature !== null && dummyData.currentTemperature !== undefined) {
+          const temp = dummyData.currentTemperature;
+          const min = threshold.min_temperature;
+          const max = threshold.max_temperature;
+          if (temp < min || temp > max) {
+            // Synthesize an alert
+            alertsData.unshift({
+              id: `dummy-${storeroomId}-${dummyData.lastUpdated}`,
+              room_id: Number(storeroomId),
+              sensor_id: null,
+              temperature_value: temp,
+              alert_type: temp < min ? 'low' : 'high',
+              triggered_at: dummyData.lastUpdated,
+              status: 'Active',
+            });
+          }
+        }
+      }
+
       // Sort by triggered_at (most recent first)
       const sortedAlerts = alertsData.sort((a: AlertLog, b: AlertLog) => 
         new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime()
       );
-      
       setAlerts(sortedAlerts);
       setLoading(false);
     } catch (error) {
@@ -299,7 +327,7 @@ export default function StoreroomDetails() {
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryText}>
             {filteredAlerts.length} {filteredAlerts.length === 1 ? 'alert' : 'alerts'} found for {getPeriodLabel().toLowerCase()}
-          </Text>
+        </Text>
         </View>
 
         {loading ? (
@@ -308,10 +336,10 @@ export default function StoreroomDetails() {
             <Text style={styles.loadingText}>Loading alert history...</Text>
           </View>
         ) : (
-          <ScrollView
+        <ScrollView
             contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
+          showsVerticalScrollIndicator={false}
+        >
             {filteredAlerts.length > 0 ? (
               filteredAlerts.map((alert) => {
                 const severity = getAlertSeverity(alert);
@@ -353,8 +381,8 @@ export default function StoreroomDetails() {
                   No alerts were recorded for {storeroomName || 'this storeroom'} during the selected time period.
                 </Text>
               </View>
-            )}
-          </ScrollView>
+          )}
+        </ScrollView>
         )}
 
         {/* Custom Date Range Modal */}

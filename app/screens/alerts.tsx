@@ -15,21 +15,7 @@ import { useAuth } from "../../src/context/AuthContext";
 import { useRouter } from "expo-router";
 import Navbar from "../../src/components/Navbar";
 import { Ionicons } from "@expo/vector-icons";
-
-interface AlertLog {
-  id: number;
-  room_id: number;
-  sensor_id: number;
-  temperature_value: number;
-  alert_type: string;
-  triggered_at: string;
-  resolved_at?: string;
-  status: string;
-  room?: {
-    id: number;
-    name: string;
-  };
-}
+import { fetchAllAlertsWithDummyCached, AlertLog } from '../../src/utils/alertsFetcher';
 
 interface Room {
   id: number;
@@ -52,46 +38,14 @@ export default function Alerts() {
       router.replace("/login");
       return;
     }
-
     setLoading(true);
     fetchAlertsData();
   }, [user, router, refreshKey]);
 
   const fetchAlertsData = async () => {
     try {
-      // Fetch rooms first
-      const roomsResponse = await fetch('https://tempalert.onensensy.com/api/rooms', {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${user.token || ''}`,
-        },
-      });
-      const roomsData = await roomsResponse.json();
-      const roomsList = roomsData.data || [];
-      setRooms(roomsList);
-
-      // Fetch alert logs
-      const alertsResponse = await fetch('https://tempalert.onensensy.com/api/alert-logs', {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${user.token || ''}`,
-        },
-      });
-      const alertsData = await alertsResponse.json();
-      const alertsList = alertsData.data || [];
-
-      // Combine alert logs with room information
-      const alertsWithRooms = alertsList.map((alert: AlertLog) => ({
-        ...alert,
-        room: roomsList.find((room: Room) => room.id === alert.room_id),
-      }));
-
-      // Sort by triggered_at (most recent first)
-      const sortedAlerts = alertsWithRooms.sort((a: AlertLog, b: AlertLog) => 
-        new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime()
-      );
-
-      setAlertLogs(sortedAlerts);
+      const allAlerts = await fetchAllAlertsWithDummyCached(user.token || '');
+      setAlertLogs(allAlerts);
       setLoading(false);
       setRefreshing(false);
     } catch (error) {
