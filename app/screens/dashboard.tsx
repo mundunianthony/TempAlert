@@ -263,8 +263,9 @@ export default function Dashboard() {
     return `Temperature alert in ${storeroomName} (${temperature}°C)`;
   }
 
-  // For displaying alerts in the dashboard, map AlertLog to display format
+  // For displaying alerts in the dashboard, map AlertLog to display format (include all original fields)
   const displayAlerts = alerts.map(alert => ({
+    ...alert, // include all original fields
     message: getAlertMessage(alert),
     timestamp: alert.triggered_at,
     temperature: alert.temperature_value,
