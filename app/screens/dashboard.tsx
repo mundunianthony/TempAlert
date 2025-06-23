@@ -284,6 +284,17 @@ export default function Dashboard() {
     return Math.round(avgTemp);
   }, [storerooms]);
 
+  // Calculate the number of rooms currently in an alert state
+  const activeAlertCount = useMemo(() => {
+    return storerooms.filter(room => {
+      if (!room.current_temperature || !room.threshold) return false;
+      const temp = room.current_temperature;
+      const min = room.threshold.min_temperature;
+      const max = room.threshold.max_temperature;
+      return temp < min || temp > max;
+    }).length;
+  }, [storerooms]);
+
   const handleRefresh = () => {
     setLoading(true);
     setRefreshKey((prevKey) => prevKey + 1);
@@ -396,7 +407,7 @@ export default function Dashboard() {
               <View style={styles.summaryIconContainer}>
                 <Ionicons name="alert-circle" size={24} color="#f59e0b" />
               </View>
-              <Text style={styles.summaryValue}>{alerts.length}</Text>
+              <Text style={styles.summaryValue}>{activeAlertCount}</Text>
               <Text style={styles.summaryLabel}>Active Alerts</Text>
             </TouchableOpacity>
 
@@ -556,7 +567,7 @@ export default function Dashboard() {
         onNavigateProfile={() => router.push("/screens/profile")}
         onNavigateHome={() => router.replace("/screens/dashboard")}
         onNavigateAlerts={() => router.push("/screens/alerts")}
-        alerts={displayAlerts}
+        alerts={Array.from({ length: activeAlertCount }, (_, i) => ({ message: '', timestamp: '' }))}
         activeTab="home"
       />
     </View>
