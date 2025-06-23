@@ -380,17 +380,13 @@ export default function AdminDashboard() {
                 <Text style={styles.summaryValue}>{adminStats.totalUsers}</Text>
                 <Text style={styles.summaryLabel}>Total Users</Text>
               </View>
-              <TouchableOpacity
-                style={[styles.summaryCard, styles.summaryCardSecondary]}
-                onPress={() => router.push("/screens/alerts")}
-                activeOpacity={0.8}
-              >
+              <View style={[styles.summaryCard, styles.summaryCardSecondary]}>
                 <View style={styles.summaryIconContainer}>
                   <Ionicons name="alert-circle" size={24} color="#f59e0b" />
                 </View>
                 <Text style={styles.summaryValue}>{adminStats.activeAlerts}</Text>
                 <Text style={styles.summaryLabel}>Active Alerts</Text>
-              </TouchableOpacity>
+              </View>
 
               <View style={[styles.summaryCard, styles.summaryCardTertiary]}>
                 <View style={styles.summaryIconContainer}>
