@@ -15,7 +15,7 @@ import { useAuth } from "../../src/context/AuthContext";
 import { useRouter } from "expo-router";
 import Navbar from "../../src/components/Navbar";
 import { Ionicons } from "@expo/vector-icons";
-import { fetchAllAlertsWithDummyCached, AlertLog } from '../../src/utils/alertsFetcher';
+import { fetchAllAlertsWithDummy, fetchAllAlertsWithDummyCached, AlertLog } from '../../src/utils/alertsFetcher';
 
 interface Room {
   id: number;
@@ -39,12 +39,17 @@ export default function Alerts() {
       return;
     }
     setLoading(true);
-    fetchAlertsData();
+    fetchAlertsData(false);
   }, [user, router, refreshKey]);
 
-  const fetchAlertsData = async () => {
+  const fetchAlertsData = async (forceRefresh = false) => {
     try {
-      const allAlerts = await fetchAllAlertsWithDummyCached(user.token || '');
+      let allAlerts;
+      if (forceRefresh) {
+        allAlerts = await fetchAllAlertsWithDummy(user.token || '');
+      } else {
+        allAlerts = await fetchAllAlertsWithDummyCached(user.token || '');
+      }
       setAlertLogs(allAlerts);
       setLoading(false);
       setRefreshing(false);
@@ -170,8 +175,6 @@ export default function Alerts() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    
-    // Animate the refresh icon
     Animated.timing(rotateAnim, {
       toValue: 1,
       duration: 800,
@@ -179,8 +182,7 @@ export default function Alerts() {
     }).start(() => {
       rotateAnim.setValue(0);
     });
-    
-    setRefreshKey(prevKey => prevKey + 1);
+    fetchAlertsData(true);
   };
 
   const spin = rotateAnim.interpolate({
