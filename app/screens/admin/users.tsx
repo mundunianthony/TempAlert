@@ -46,7 +46,6 @@ export default function UsersScreen() {
     phone_number: '',
     password: '',
     password_confirmation: '',
-    role: 'user',
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -129,7 +128,7 @@ export default function UsersScreen() {
           phone_number: newUser.phone_number.trim() || null,
           password: newUser.password,
           password_confirmation: newUser.password_confirmation,
-          role: newUser.role,
+          role: 'manager',
         }),
       });
       const data = await response.json();
@@ -142,7 +141,6 @@ export default function UsersScreen() {
           phone_number: '',
           password: '',
           password_confirmation: '',
-          role: 'user',
         });
         fetchUsers();
       } else {
@@ -451,31 +449,6 @@ export default function UsersScreen() {
               </View>
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Role *</Text>
-              <View style={styles.rolePicker}>
-                {['user', 'manager', 'admin'].map((role) => (
-                  <TouchableOpacity
-                    key={role}
-                    style={[
-                      styles.roleOption,
-                      newUser.role === role && styles.roleOptionSelected,
-                    ]}
-                    onPress={() => setNewUser({ ...newUser, role })}
-                  >
-                    <Text
-                      style={[
-                        styles.roleOptionText,
-                        newUser.role === role && styles.roleOptionTextSelected,
-                      ]}
-                    >
-                      {getRoleDisplayName(role)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
             <TouchableOpacity
               style={[styles.submitButton, createLoading && styles.submitButtonDisabled]}
               onPress={handleCreateUser}
@@ -736,30 +709,6 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     backgroundColor: '#fff',
-  },
-  rolePicker: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  roleOption: {
-    flex: 1,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  roleOptionSelected: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
-  },
-  roleOptionText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  roleOptionTextSelected: {
-    color: '#fff',
   },
   submitButton: {
     backgroundColor: '#3b82f6',

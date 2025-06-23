@@ -22,7 +22,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { login, user, isAdmin } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
 
   const handleLogin = async () => {
     console.log('HANDLE LOGIN CLICKED');
@@ -36,11 +36,18 @@ export default function Login() {
 
     try {
       await login(email, password);
-      if (isAdmin) {
-        router.replace("/screens/admin/dashboard");
-      } else {
-        router.replace("/screens/dashboard");
-      }
+      // Wait for user to be set
+      const waitForUser = async () => {
+        while (authLoading || !user) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        if (user.role === 'sa') {
+          router.replace("/screens/admin/dashboard");
+        } else {
+          router.replace("/screens/dashboard");
+        }
+      };
+      waitForUser();
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {
