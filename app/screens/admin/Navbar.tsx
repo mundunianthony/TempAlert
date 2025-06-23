@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 
@@ -15,40 +15,54 @@ export default function AdminNavbar() {
     router.push(path as any);
   };
 
+  const NavItem = ({ 
+    path, 
+    iconName, 
+    label 
+  }: { 
+    path: string; 
+    iconName: keyof typeof Ionicons.glyphMap; 
+    label: string; 
+  }) => {
+    const active = isActive(path);
+    
+    return (
+      <TouchableOpacity
+        style={[styles.navItem, active && styles.activeNavItem]}
+        onPress={() => navigateTo(path)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconContainer, active && styles.activeIconContainer]}>
+          <Ionicons
+            name={iconName}
+            size={22}
+            color={active ? '#ffffff' : '#6b7280'}
+          />
+        </View>
+        <Text style={[styles.navLabel, active && styles.activeNavLabel]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View style={styles.navbar}>
-      <TouchableOpacity
-        style={[styles.navItem, isActive('/screens/admin/dashboard') && styles.activeNavItem]}
-        onPress={() => navigateTo('/screens/admin/dashboard')}
-      >
-        <Ionicons
-          name="home"
-          size={24}
-          color={isActive('/screens/admin/dashboard') ? '#3b82f6' : '#6b7280'}
-        />
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.navItem, isActive('/screens/admin/rooms') && styles.activeNavItem]}
-        onPress={() => navigateTo('/screens/admin/rooms')}
-      >
-        <Ionicons
-          name="business"
-          size={24}
-          color={isActive('/screens/admin/rooms') ? '#3b82f6' : '#6b7280'}
-        />
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.navItem, isActive('/screens/admin/users') && styles.activeNavItem]}
-        onPress={() => navigateTo('/screens/admin/users')}
-      >
-        <Ionicons
-          name="people"
-          size={24}
-          color={isActive('/screens/admin/users') ? '#3b82f6' : '#6b7280'}
-        />
-      </TouchableOpacity>
+      <NavItem 
+        path="/screens/admin/dashboard" 
+        iconName="home" 
+        label="Dashboard" 
+      />
+      <NavItem 
+        path="/screens/admin/rooms" 
+        iconName="business" 
+        label="Rooms" 
+      />
+      <NavItem 
+        path="/screens/admin/users" 
+        iconName="people" 
+        label="Users" 
+      />
     </View>
   );
 }
@@ -58,28 +72,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    borderTopColor: '#f1f5f9',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     justifyContent: 'space-around',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: -2,
+      height: -4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 8,
+    minHeight: 80,
   },
   navItem: {
-    padding: 12,
-    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 60,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    minWidth: 70,
+    minHeight: 60,
   },
   activeNavItem: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#f8fafc',
   },
-}); 
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    backgroundColor: 'transparent',
+  },
+  activeIconContainer: {
+    backgroundColor: '#2563eb',
+    shadowColor: '#2563eb',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  navLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6b7280',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  activeNavLabel: {
+    color: '#2563eb',
+    fontWeight: '600',
+  },
+});
+

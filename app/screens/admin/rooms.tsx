@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   Dimensions,
   StatusBar,
+  SafeAreaView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -92,12 +94,10 @@ export default function RoomsScreen() {
   const assignRoomType = async (roomId: number, roomName: string) => {
     const config = await getRoomConfiguration();
     
-    // If this is the first room, assign as real
     if (config.roomOrder.length === 0) {
       config.firstRoomId = roomId;
       config.roomTypes[roomId] = 'real';
     } else {
-      // All subsequent rooms are dummy
       config.roomTypes[roomId] = 'dummy';
     }
     
@@ -180,10 +180,8 @@ export default function RoomsScreen() {
 
     setCreateLoading(true);
     try {
-      // Ensure we have a valid farm first
-      let farmId = 1; // Default farm ID
+      let farmId = 1;
       
-      // Check if farms exist, if not create a default farm
       if (farms.length === 0) {
         try {
           const farmResponse = await fetch('https://tempalert.onensensy.com/api/farms', {
@@ -206,21 +204,16 @@ export default function RoomsScreen() {
           }
         } catch (farmError) {
           console.error('Error creating default farm:', farmError);
-          // Continue with farm_id = 1
         }
       } else {
-        // Use the first available farm
         farmId = farms[0].id;
       }
 
-      // Create room first
       const roomRequestData = {
         farm_id: farmId.toString(),
         name: newRoom.name.trim(),
         description: newRoom.description.trim(),
       };
-      
-      console.log('Creating room with data:', roomRequestData);
       
       const roomResponse = await fetch('https://tempalert.onensensy.com/api/rooms', {
         method: 'POST',
@@ -236,14 +229,11 @@ export default function RoomsScreen() {
       if (roomResponse.ok && roomData.data) {
         const createdRoom = roomData.data;
         
-        // Create threshold (now required)
         const thresholdRequestData = {
           room_id: createdRoom.id.toString(),
           min_temperature: minTemp.toString(),
           max_temperature: maxTemp.toString(),
         };
-        
-        console.log('Creating threshold with data:', thresholdRequestData);
         
         const thresholdResponse = await fetch('https://tempalert.onensensy.com/api/thresholds', {
           method: 'POST',
@@ -268,7 +258,6 @@ export default function RoomsScreen() {
         setNewThreshold({ min_temperature: '', max_temperature: '' });
         setCreateWithThreshold(true);
         
-        // Assign room type after successful creation
         const roomType = await assignRoomType(createdRoom.id, createdRoom.name);
         console.log(`Room ${createdRoom.name} assigned as ${roomType} room`);
         
@@ -355,7 +344,6 @@ export default function RoomsScreen() {
         setSelectedRoom(null);
         fetchData();
       } else {
-        // If backend fails, check if dummy room and save locally
         const dummy = await isDummyRoom(selectedRoom.id);
         if (dummy) {
           await saveDemoRoomThreshold(selectedRoom.id, { min_temperature: minTemp, max_temperature: maxTemp });
@@ -369,7 +357,6 @@ export default function RoomsScreen() {
         }
       }
     } catch (error) {
-      // Network or other error: fallback to local for dummy
       const dummy = await isDummyRoom(selectedRoom.id);
       if (dummy) {
         await saveDemoRoomThreshold(selectedRoom.id, { min_temperature: minTemp, max_temperature: maxTemp });
@@ -395,27 +382,127 @@ export default function RoomsScreen() {
     return farm ? farm.name : 'Unknown Farm';
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+  const LoadingState = () => (
+    <View style={styles.loadingContainer}>
+      <View style={styles.loadingContent}>
+        <ActivityIndicator size="large" color="#2563eb" />
         <Text style={styles.loadingText}>Loading rooms...</Text>
       </View>
+    </View>
+  );
+
+  const EmptyState = () => (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyStateIcon}>
+        <Ionicons name="business-outline" size={64} color="#cbd5e1" />
+      </View>
+      <Text style={styles.emptyStateTitle}>No rooms found</Text>
+      <Text style={styles.emptyStateSubtext}>Create your first room to get started</Text>
+      <TouchableOpacity
+        style={styles.emptyStateButton}
+        onPress={() => setShowCreateModal(true)}
+      >
+        <Ionicons name="add" size={20} color="#ffffff" />
+        <Text style={styles.emptyStateButtonText}>Create Room</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const RoomCard = ({ room }: { room: Room }) => {
+    const threshold = getThresholdForRoom(room.id);
+    
+    return (
+      <View style={styles.roomCard}>
+        <View style={styles.roomCardHeader}>
+          <View style={styles.roomInfo}>
+            <Text style={styles.roomName}>{room.name}</Text>
+            <View style={styles.farmBadge}>
+              <Ionicons name="location-outline" size={14} color="#6b7280" />
+              <Text style={styles.farmName}>{getFarmName(room.farm_id)}</Text>
+            </View>
+            {room.description && (
+              <Text style={styles.roomDescription}>{room.description}</Text>
+            )}
+          </View>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteRoom(room)}
+          >
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.thresholdSection}>
+          <View style={styles.thresholdHeader}>
+            <Ionicons name="thermometer-outline" size={16} color="#6b7280" />
+            <Text style={styles.thresholdTitle}>Temperature Thresholds</Text>
+          </View>
+          
+          {threshold ? (
+            <View style={styles.thresholdDisplay}>
+              <View style={styles.thresholdValues}>
+                <View style={styles.thresholdValue}>
+                  <Text style={styles.thresholdLabel}>Min</Text>
+                  <Text style={styles.thresholdNumber}>{threshold.min_temperature}°C</Text>
+                </View>
+                <View style={styles.thresholdDivider} />
+                <View style={styles.thresholdValue}>
+                  <Text style={styles.thresholdLabel}>Max</Text>
+                  <Text style={styles.thresholdNumber}>{threshold.max_temperature}°C</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.editThresholdButton}
+                onPress={() => {
+                  setSelectedRoom(room);
+                  setNewThreshold({
+                    min_temperature: threshold.min_temperature.toString(),
+                    max_temperature: threshold.max_temperature.toString(),
+                  });
+                  setShowThresholdModal(true);
+                }}
+              >
+                <Ionicons name="pencil" size={16} color="#2563eb" />
+                <Text style={styles.editThresholdText}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.addThresholdButton}
+              onPress={() => {
+                setSelectedRoom(room);
+                setNewThreshold({ min_temperature: '', max_temperature: '' });
+                setShowThresholdModal(true);
+              }}
+            >
+              <Ionicons name="add" size={16} color="#2563eb" />
+              <Text style={styles.addThresholdText}>Add Threshold</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
     );
+  };
+
+  if (loading) {
+    return <LoadingState />;
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       
       <View style={styles.header}>
-        <Text style={styles.title}>Manage Rooms</Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.title}>Rooms</Text>
+          <Text style={styles.subtitle}>Manage your monitoring rooms</Text>
+        </View>
         <TouchableOpacity
           style={styles.createButton}
           onPress={() => setShowCreateModal(true)}
         >
-          <Ionicons name="add" size={20} color="#fff" />
-          <Text style={styles.createButtonText}>Create Room</Text>
+          <Ionicons name="add" size={20} color="#ffffff" />
+          <Text style={styles.createButtonText}>Create</Text>
         </TouchableOpacity>
       </View>
 
@@ -423,72 +510,14 @@ export default function RoomsScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       >
         {rooms.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="business-outline" size={64} color="#9ca3af" />
-            <Text style={styles.emptyStateText}>No rooms found</Text>
-            <Text style={styles.emptyStateSubtext}>Create your first room to get started</Text>
-          </View>
+          <EmptyState />
         ) : (
-          rooms.map((room) => {
-            const threshold = getThresholdForRoom(room.id);
-            return (
-              <View key={room.id} style={styles.roomCard}>
-                <View style={styles.roomHeader}>
-                  <View>
-                    <Text style={styles.roomName}>{room.name}</Text>
-                    <Text style={styles.farmName}>{getFarmName(room.farm_id)}</Text>
-                    {room.description && (
-                      <Text style={styles.roomDescription}>{room.description}</Text>
-                    )}
-                  </View>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteRoom(room)}
-                  >
-                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.thresholdSection}>
-                  <Text style={styles.thresholdTitle}>Temperature Thresholds:</Text>
-                  {threshold ? (
-                    <View style={styles.thresholdInfo}>
-                      <Text style={styles.thresholdText}>
-                        Min: {threshold.min_temperature}°C | Max: {threshold.max_temperature}°C
-                      </Text>
-                      <TouchableOpacity
-                        style={styles.editThresholdButton}
-                        onPress={() => {
-                          setSelectedRoom(room);
-                          setNewThreshold({
-                            min_temperature: threshold.min_temperature.toString(),
-                            max_temperature: threshold.max_temperature.toString(),
-                          });
-                          setShowThresholdModal(true);
-                        }}
-                      >
-                        <Ionicons name="pencil" size={16} color="#3b82f6" />
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.addThresholdButton}
-                      onPress={() => {
-                        setSelectedRoom(room);
-                        setNewThreshold({ min_temperature: '', max_temperature: '' });
-                        setShowThresholdModal(true);
-                      }}
-                    >
-                      <Ionicons name="add-circle-outline" size={16} color="#3b82f6" />
-                      <Text style={styles.addThresholdText}>Add Threshold</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            );
-          })
+          rooms.map((room) => (
+            <RoomCard key={room.id} room={room} />
+          ))
         )}
       </ScrollView>
 
@@ -503,66 +532,90 @@ export default function RoomsScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Room</Text>
-              <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowCreateModal(false)}
+              >
                 <Ionicons name="close" size={24} color="#6b7280" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Room Name *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter room name"
-                value={newRoom.name}
-                onChangeText={(text) => setNewRoom({ ...newRoom, name: text })}
-              />
+            <View style={styles.modalBody}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Room Name *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={newRoom.name}
+                  onChangeText={(text) => setNewRoom({ ...newRoom, name: text })}
+                  placeholder="Enter room name"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Description</Text>
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  value={newRoom.description}
+                  onChangeText={(text) => setNewRoom({ ...newRoom, description: text })}
+                  placeholder="Enter room description"
+                  placeholderTextColor="#9ca3af"
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
+              <View style={styles.thresholdInputs}>
+                <Text style={styles.sectionTitle}>Temperature Thresholds *</Text>
+                <View style={styles.thresholdRow}>
+                  <View style={styles.thresholdInput}>
+                    <Text style={styles.inputLabel}>Min Temperature (°C)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={newThreshold.min_temperature}
+                      onChangeText={(text) => setNewThreshold({ ...newThreshold, min_temperature: text })}
+                      placeholder="0"
+                      placeholderTextColor="#9ca3af"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={styles.thresholdInput}>
+                    <Text style={styles.inputLabel}>Max Temperature (°C)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={newThreshold.max_temperature}
+                      onChangeText={(text) => setNewThreshold({ ...newThreshold, max_temperature: text })}
+                      placeholder="100"
+                      placeholderTextColor="#9ca3af"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+              </View>
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Enter room description"
-                value={newRoom.description}
-                onChangeText={(text) => setNewRoom({ ...newRoom, description: text })}
-                multiline
-                numberOfLines={3}
-              />
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowCreateModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.submitButton, createLoading && styles.submitButtonDisabled]}
+                onPress={handleCreateRoom}
+                disabled={createLoading}
+              >
+                {createLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={18} color="#ffffff" />
+                    <Text style={styles.submitButtonText}>Create Room</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Minimum Temperature (°C) *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., 10"
-                value={newThreshold.min_temperature}
-                onChangeText={(text) => setNewThreshold({ ...newThreshold, min_temperature: text })}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Maximum Temperature (°C) *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., 30"
-                value={newThreshold.max_temperature}
-                onChangeText={(text) => setNewThreshold({ ...newThreshold, max_temperature: text })}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.submitButton, createLoading && styles.submitButtonDisabled]}
-              onPress={handleCreateRoom}
-              disabled={createLoading}
-            >
-              {createLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitButtonText}>Create Room</Text>
-              )}
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -578,255 +631,453 @@ export default function RoomsScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {selectedRoom ? `Set Threshold for ${selectedRoom.name}` : 'Set Threshold'}
+                {getThresholdForRoom(selectedRoom?.id || 0) ? 'Edit' : 'Add'} Threshold
               </Text>
-              <TouchableOpacity onPress={() => setShowThresholdModal(false)}>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowThresholdModal(false)}
+              >
                 <Ionicons name="close" size={24} color="#6b7280" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Minimum Temperature (°C) *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., 10"
-                value={newThreshold.min_temperature}
-                onChangeText={(text) => setNewThreshold({ ...newThreshold, min_temperature: text })}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Maximum Temperature (°C) *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., 30"
-                value={newThreshold.max_temperature}
-                onChangeText={(text) => setNewThreshold({ ...newThreshold, max_temperature: text })}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.submitButton, thresholdLoading && styles.submitButtonDisabled]}
-              onPress={handleCreateThreshold}
-              disabled={thresholdLoading}
-            >
-              {thresholdLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitButtonText}>Save Threshold</Text>
+            <View style={styles.modalBody}>
+              {selectedRoom && (
+                <View style={styles.roomInfo}>
+                  <Text style={styles.selectedRoomName}>{selectedRoom.name}</Text>
+                </View>
               )}
-            </TouchableOpacity>
+
+              <View style={styles.thresholdRow}>
+                <View style={styles.thresholdInput}>
+                  <Text style={styles.inputLabel}>Min Temperature (°C)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={newThreshold.min_temperature}
+                    onChangeText={(text) => setNewThreshold({ ...newThreshold, min_temperature: text })}
+                    placeholder="0"
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={styles.thresholdInput}>
+                  <Text style={styles.inputLabel}>Max Temperature (°C)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={newThreshold.max_temperature}
+                    onChangeText={(text) => setNewThreshold({ ...newThreshold, max_temperature: text })}
+                    placeholder="100"
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowThresholdModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.submitButton, thresholdLoading && styles.submitButtonDisabled]}
+                onPress={handleCreateThreshold}
+                disabled={thresholdLoading}
+              >
+                {thresholdLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={18} color="#ffffff" />
+                    <Text style={styles.submitButtonText}>
+                      {getThresholdForRoom(selectedRoom?.id || 0) ? 'Update' : 'Add'} Threshold
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
 
       <AdminNavbar />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    paddingTop: Platform.OS === 'android' ? 24 : 0,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
   },
   loadingContainer: {
     flex: 1,
+    backgroundColor: '#f8fafc',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+  },
+  loadingContent: {
+    alignItems: 'center',
+    padding: 32,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     color: '#6b7280',
+    fontWeight: '500',
   },
   header: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerContent: {
+    flex: 1,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#1f2937',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
   },
   createButton: {
+    backgroundColor: '#2563eb',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3b82f6',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#2563eb',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   createButtonText: {
-    color: '#fff',
+    color: '#ffffff',
+    fontSize: 14,
     fontWeight: '600',
-    marginLeft: 4,
+    marginLeft: 6,
   },
   content: {
     flex: 1,
   },
   contentContainer: {
     padding: 20,
-    paddingBottom: 100, // Add padding to account for the navbar
+    paddingBottom: 100,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
   },
-  emptyStateText: {
-    fontSize: 18,
+  emptyStateIcon: {
+    marginBottom: 24,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
     fontWeight: '600',
-    color: '#6b7280',
-    marginTop: 16,
+    color: '#374151',
+    marginBottom: 8,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#9ca3af',
-    marginTop: 8,
+    color: '#6b7280',
     textAlign: 'center',
+    marginBottom: 32,
+  },
+  emptyStateButton: {
+    backgroundColor: '#2563eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyStateButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   roomCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
-  roomHeader: {
+  roomCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  roomInfo: {
+    flex: 1,
+    marginRight: 12,
   },
   roomName: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1f2937',
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  farmBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
   },
   farmName: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6b7280',
-    marginBottom: 4,
+    fontWeight: '500',
+    marginLeft: 4,
   },
   roomDescription: {
     fontSize: 14,
-    color: '#4b5563',
-    fontStyle: 'italic',
+    color: '#6b7280',
+    lineHeight: 20,
   },
   deleteButton: {
     padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#fef2f2',
   },
   thresholdSection: {
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    paddingTop: 12,
+    borderTopColor: '#f1f5f9',
+    paddingTop: 16,
+  },
+  thresholdHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   thresholdTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
+    marginLeft: 6,
   },
-  thresholdInfo: {
+  thresholdDisplay: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  thresholdText: {
-    fontSize: 14,
+  thresholdValues: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  thresholdValue: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  thresholdLabel: {
+    fontSize: 12,
     color: '#6b7280',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  thresholdNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  thresholdDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#e5e7eb',
+    marginHorizontal: 16,
   },
   editThresholdButton: {
-    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  editThresholdText: {
+    fontSize: 12,
+    color: '#2563eb',
+    fontWeight: '600',
+    marginLeft: 4,
   },
   addThresholdButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    borderStyle: 'dashed',
   },
   addThresholdText: {
     fontSize: 14,
-    color: '#3b82f6',
-    marginLeft: 4,
+    color: '#2563eb',
+    fontWeight: '600',
+    marginLeft: 6,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    width: Dimensions.get('window').width - 40,
-    maxHeight: Dimensions.get('window').height * 0.8,
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#1f2937',
   },
-  formGroup: {
-    marginBottom: 16,
+  modalCloseButton: {
+    padding: 4,
   },
-  label: {
+  modalBody: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#374151',
     marginBottom: 8,
   },
-  input: {
+  textInput: {
     borderWidth: 1,
     borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
+    color: '#1f2937',
+    backgroundColor: '#ffffff',
   },
   textArea: {
     height: 80,
     textAlignVertical: 'top',
   },
-  submitButton: {
-    backgroundColor: '#3b82f6',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#9ca3af',
-  },
-  submitButtonText: {
-    color: '#fff',
+  sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 12,
   },
-}); 
+  thresholdInputs: {
+    marginBottom: 20,
+  },
+  thresholdRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  thresholdInput: {
+    flex: 1,
+  },
+  selectedRoomName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2563eb',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  submitButton: {
+    flex: 1,
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginLeft: 6,
+  },
+});
+

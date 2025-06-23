@@ -43,7 +43,7 @@ interface TemperatureDataPoint {
 }
 
 export default function Dashboard() {
-  const { user, lastName, logout } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -349,7 +349,7 @@ export default function Dashboard() {
         <View>
           <Text style={styles.welcomeText}>Welcome back</Text>
           <Text style={styles.greeting}>
-            {user.name || lastName || user.displayName || "User"} {'\u{1F44B}'}
+            {user.name || user.displayName || "User"} {'\u{1F44B}'}
           </Text>
         </View>
         <TouchableOpacity
@@ -376,45 +376,6 @@ export default function Dashboard() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Summary Cards */}
-          <View style={styles.summaryContainer}>
-            <View style={[styles.summaryCard, styles.summaryCardPrimary]}>
-              <View style={styles.summaryIconContainer}>
-                <Ionicons name="thermometer" size={24} color="#0891b2" />
-              </View>
-              <Text style={styles.summaryValue}>
-                {storerooms.length > 0
-                  ? (() => {
-                      const roomsWithTemp = storerooms.filter(room => room.current_temperature !== null && room.current_temperature !== undefined);
-                      if (roomsWithTemp.length === 0) return "N/A";
-                      const avgTemp = roomsWithTemp.reduce((sum, room) => sum + room.current_temperature!, 0) / roomsWithTemp.length;
-                      return `${Math.round(avgTemp)}°C`;
-                    })()
-                  : "N/A"}
-              </Text>
-              <Text style={styles.summaryLabel}>Avg Temp</Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.summaryCard, styles.summaryCardSecondary]}
-              onPress={() => router.push("/screens/alerts")}
-              activeOpacity={0.8}
-            >
-              <View style={styles.summaryIconContainer}>
-                <Ionicons name="alert-circle" size={24} color="#f59e0b" />
-              </View>
-              <Text style={styles.summaryValue}>{alerts.length}</Text>
-              <Text style={styles.summaryLabel}>Alerts</Text>
-            </TouchableOpacity>
-
-            <View style={[styles.summaryCard, styles.summaryCardTertiary]}>
-              <View style={styles.summaryIconContainer}>
-                <Ionicons name="cube" size={24} color="#8b5cf6" />
-              </View>
-              <Text style={styles.summaryValue}>{storerooms.length}</Text>
-              <Text style={styles.summaryLabel}>Storerooms</Text>
-            </View>
-          </View>
-
           {/* Storeroom Overview */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Storeroom Overview</Text>
@@ -431,48 +392,48 @@ export default function Dashboard() {
               <Text style={styles.emptyStateText}>No storerooms available</Text>
             ) : (
               storerooms.map((room, index) => (
-                <TouchableOpacity
+                <View
                   key={room.id}
-                  onPress={() =>
-                    router.push({
-                      pathname: "./storeroom-details",
-                      params: {
-                        storeroomId: room.id,
-                        storeroomName: room.name,
-                      },
-                    })
-                  }
                   style={[
                     styles.storeroomItem,
                     index < storerooms.length - 1 && styles.divider,
                   ]}
                 >
                   <View style={styles.storeroomInfo}>
-                    <Text style={styles.roomName}>{room.name}</Text>
-                    <Text style={styles.lastUpdated}>
-                      {room.last_reading_time 
-                        ? `Updated ${timeAgo(room.last_reading_time)}`
-                        : "No recent readings"
-                      }
-                    </Text>
-                  </View>
-
-                  <View style={styles.temperatureContainer}>
-                    <Text style={styles.temperatureValue}>
-                      {room.current_temperature ? `${room.current_temperature}°C` : "N/A"}
-                    </Text>
-                    <View
-                      style={[styles.statusBadge, getStatusColor(room)]}
-                    >
-                      {getStatusIcon(room)}
-                      <Text
-                        style={[styles.statusText, getStatusColor(room)]}
-                      >
-                        {getStatusText(room)}
+                    <View style={styles.storeroomHeader}>
+                      <Text style={styles.storeroomName}>{room.name}</Text>
+                      <View style={styles.statusContainer}>
+                        {getStatusIcon(room)}
+                        <Text style={[styles.statusText, getStatusColor(room)]}>
+                          {getStatusText(room)}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.storeroomDetails}>
+                      <Text style={styles.temperatureText}>
+                        {room.current_temperature !== null && room.current_temperature !== undefined
+                          ? `${room.current_temperature}°C`
+                          : "No data"}
+                      </Text>
+                      <Text style={styles.lastUpdatedText}>
+                        Updated {room.last_reading_time ? timeAgo(room.last_reading_time) : "Unknown time"}
                       </Text>
                     </View>
+
+                    {room.threshold && (
+                      <Text style={styles.thresholdText}>
+                        Range: {room.threshold.min_temperature}°C - {room.threshold.max_temperature}°C
+                      </Text>
+                    )}
+
+                    {room.is_dummy && (
+                      <View style={styles.dummyBadge}>
+                        <Text style={styles.dummyBadgeText}>Demo Data</Text>
+                      </View>
+                    )}
                   </View>
-                </TouchableOpacity>
+                </View>
               ))
             )}
           </View>
@@ -632,45 +593,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24,
   },
-  summaryContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  summaryCard: {
-    width: "31%",
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  summaryCardPrimary: {
-    backgroundColor: "#e0f2fe", // Light cyan background
-  },
-  summaryCardSecondary: {
-    backgroundColor: "#fef3c7", // Light amber background
-  },
-  summaryCardTertiary: {
-    backgroundColor: "#ede9fe", // Light purple background
-  },
-  summaryIconContainer: {
-    marginBottom: 8,
-  },
-  summaryValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#0f172a", // Slate-900
-    marginBottom: 4,
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: "#64748b", // Slate-500
-  },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -719,56 +641,51 @@ const styles = StyleSheet.create({
   storeroomInfo: {
     flex: 1,
   },
-  roomName: {
+  storeroomHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  storeroomName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#0f172a", // Slate-900
-    marginBottom: 4,
   },
-  lastUpdated: {
-    fontSize: 12,
-    color: "#64748b", // Slate-500
-  },
-  temperatureContainer: {
-    alignItems: "flex-end",
-  },
-  temperatureValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#0f172a", // Slate-900
-    marginBottom: 4,
-  },
-  statusBadge: {
+  statusContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
   },
   statusText: {
     fontSize: 12,
     fontWeight: "600",
     marginLeft: 4,
   },
-  statusNormal: {
+  storeroomDetails: {
+    marginBottom: 4,
+  },
+  temperatureText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#0f172a", // Slate-900
+  },
+  lastUpdatedText: {
+    fontSize: 12,
+    color: "#64748b", // Slate-500
+  },
+  thresholdText: {
+    fontSize: 12,
+    color: "#64748b", // Slate-500
+  },
+  dummyBadge: {
     backgroundColor: "rgba(16, 185, 129, 0.1)",
+    borderRadius: 4,
+    padding: 4,
+  },
+  dummyBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
     color: "#10b981",
-  },
-  statusLow: {
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
-    color: "#3b82f6",
-  },
-  statusHigh: {
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-    color: "#ef4444",
-  },
-  statusUnknown: {
-    backgroundColor: "rgba(107, 114, 128, 0.1)",
-    color: "#6b7280",
-  },
-  divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9", // Slate-100
   },
   alertItem: {
     flexDirection: "row",
@@ -850,4 +767,21 @@ const styles = StyleSheet.create({
     color: "#0891b2", // Cyan-600
     marginRight: 4,
   },
+  statusNormal: {
+    color: "#10b981",
+  },
+  statusLow: {
+    color: "#3b82f6",
+  },
+  statusHigh: {
+    color: "#ef4444",
+  },
+  statusUnknown: {
+    color: "#6b7280",
+  },
+  divider: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
 });
+
