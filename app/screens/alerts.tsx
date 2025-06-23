@@ -16,18 +16,32 @@ import { useRouter } from "expo-router";
 import Navbar from "../../src/components/Navbar";
 import { Ionicons } from "@expo/vector-icons";
 
-interface Storeroom {
-  id: string;
+interface AlertLog {
+  id: number;
+  room_id: number;
+  sensor_id: number;
+  temperature_value: number;
+  alert_type: string;
+  triggered_at: string;
+  resolved_at?: string;
+  status: string;
+  room?: {
+    id: number;
+    name: string;
+  };
+}
+
+interface Room {
+  id: number;
   name: string;
-  temperature: number;
-  status: "Normal" | "Warning" | "Critical";
-  lastUpdated: Timestamp;
+  description: string;
 }
 
 export default function Alerts() {
   const { user, isAdmin } = useAuth();
   const router = useRouter();
-  const [storerooms, setStorerooms] = useState<Storeroom[]>([]);
+  const [alertLogs, setAlertLogs] = useState<AlertLog[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,38 +54,69 @@ export default function Alerts() {
     }
 
     setLoading(true);
-
-    // Fetch storerooms from API
-    fetch('https://tempalert.onensensy.com/api/rooms', {
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${user.token || ''}`,
-      },
-    })
-      .then(res => res.json())
-      .then(data => {
-        setStorerooms(data.data || []);
-        setLoading(false);
-        setRefreshing(false);
-      })
-      .catch(err => {
-        setLoading(false);
-        setRefreshing(false);
-        // Optionally handle error
-      });
+    fetchAlertsData();
   }, [user, router, refreshKey]);
 
-  const getAlertMessage = (temperature: number, storeroomName: string) => {
-    if (temperature <= 15) {
-      return `Temperature too low in ${storeroomName} (${temperature}°C)! Risk of freezing—check cooling system.`;
-    } else if (temperature >= 25 && temperature <= 30) {
-      return `Temperature warming up in ${storeroomName} (${temperature}°C)—monitor to prevent spoilage.`;
-    } else if (temperature >= 31 && temperature <= 40) {
-      return `Temperature too hot in ${storeroomName} (${temperature}°C)! Risk of spoilage—take action now.`;
-    } else if (temperature > 40) {
-      return `Critical heat in ${storeroomName} (${temperature}°C)! Immediate intervention required.`;
+  const fetchAlertsData = async () => {
+    try {
+      // Fetch rooms first
+      const roomsResponse = await fetch('https://tempalert.onensensy.com/api/rooms', {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${user.token || ''}`,
+        },
+      });
+      const roomsData = await roomsResponse.json();
+      const roomsList = roomsData.data || [];
+      setRooms(roomsList);
+
+      // Fetch alert logs
+      const alertsResponse = await fetch('https://tempalert.onensensy.com/api/alert-logs', {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${user.token || ''}`,
+        },
+      });
+      const alertsData = await alertsResponse.json();
+      const alertsList = alertsData.data || [];
+
+      // Combine alert logs with room information
+      const alertsWithRooms = alertsList.map((alert: AlertLog) => ({
+        ...alert,
+        room: roomsList.find((room: Room) => room.id === alert.room_id),
+      }));
+
+      // Sort by triggered_at (most recent first)
+      const sortedAlerts = alertsWithRooms.sort((a: AlertLog, b: AlertLog) => 
+        new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime()
+      );
+
+      setAlertLogs(sortedAlerts);
+      setLoading(false);
+      setRefreshing(false);
+    } catch (error) {
+      console.error('Error fetching alerts data:', error);
+      setLoading(false);
+      setRefreshing(false);
     }
-    return "";
+  };
+
+  const getAlertMessage = (alert: AlertLog) => {
+    const temperature = alert.temperature_value;
+    const roomName = alert.room?.name || `Room ${alert.room_id}`;
+    
+    if (alert.alert_type === 'low' || temperature <= 15) {
+      return `Temperature too low in ${roomName} (${temperature}°C)! Risk of freezing—check cooling system.`;
+    } else if (alert.alert_type === 'high' || temperature >= 25) {
+      if (temperature <= 30) {
+        return `Temperature warming up in ${roomName} (${temperature}°C)—monitor to prevent spoilage.`;
+      } else if (temperature <= 40) {
+        return `Temperature too hot in ${roomName} (${temperature}°C)! Risk of spoilage—take action now.`;
+      } else {
+        return `Critical heat in ${roomName} (${temperature}°C)! Immediate intervention required.`;
+      }
+    }
+    return `Temperature alert in ${roomName} (${temperature}°C)`;
   };
 
   type IoniconName =
@@ -81,8 +126,10 @@ export default function Alerts() {
     | "warning-outline"
     | "information-circle-outline";
   
-  const getAlertSeverity = (temperature: number) => {
-    if (temperature <= 15) {
+  const getAlertSeverity = (alert: AlertLog) => {
+    const temperature = alert.temperature_value;
+    
+    if (alert.alert_type === 'low' || temperature <= 15) {
       return {
         icon: "snow-outline" as IoniconName,
         color: "#3b82f6", // Blue
@@ -90,30 +137,32 @@ export default function Alerts() {
         label: "Too Cold",
         priority: 2
       };
-    } else if (temperature >= 25 && temperature <= 30) {
-      return {
-        icon: "alert-circle-outline" as IoniconName,
-        color: "#f59e0b", // Amber
-        bgColor: "#fef3c7", // Light amber
-        label: "Warning",
-        priority: 3
-      };
-    } else if (temperature >= 31 && temperature <= 40) {
-      return {
-        icon: "flame-outline" as IoniconName,
-        color: "#f97316", // Orange
-        bgColor: "#ffedd5", // Light orange
-        label: "Too Hot",
-        priority: 4
-      };
-    } else if (temperature > 40) {
-      return {
-        icon: "warning-outline" as IoniconName,
-        color: "#ef4444", // Red
-        bgColor: "#fee2e2", // Light red
-        label: "Critical",
-        priority: 5
-      };
+    } else if (alert.alert_type === 'high' || temperature >= 25) {
+      if (temperature <= 30) {
+        return {
+          icon: "alert-circle-outline" as IoniconName,
+          color: "#f59e0b", // Amber
+          bgColor: "#fef3c7", // Light amber
+          label: "Warning",
+          priority: 3
+        };
+      } else if (temperature <= 40) {
+        return {
+          icon: "flame-outline" as IoniconName,
+          color: "#f97316", // Orange
+          bgColor: "#ffedd5", // Light orange
+          label: "Too Hot",
+          priority: 4
+        };
+      } else {
+        return {
+          icon: "warning-outline" as IoniconName,
+          color: "#ef4444", // Red
+          bgColor: "#fee2e2", // Light red
+          label: "Critical",
+          priority: 5
+        };
+      }
     }
     return {
       icon: "information-circle-outline" as IoniconName,
@@ -124,23 +173,19 @@ export default function Alerts() {
     };
   };
 
-  const alerts = useMemo(() => {
-    const alertsList = storerooms
-      .filter((room) => room.temperature <= 15 || room.temperature >= 25)
-      .map((room) => ({
-        message: getAlertMessage(room.temperature, room.name),
-        timestamp: room.lastUpdated
-          ? room.lastUpdated.toDate().toISOString()
-          : "",
-        storeroomName: room.name,
-        temperature: room.temperature,
-        severity: getAlertSeverity(room.temperature)
-      }))
-      .filter((alert) => alert.message); // Remove empty messages
-    
-    // Sort alerts by priority (highest first)
-    return alertsList.sort((a, b) => b.severity.priority - a.severity.priority);
-  }, [storerooms]);
+  const processedAlerts = useMemo(() => {
+    return alertLogs.map((alert) => ({
+      ...alert,
+      message: getAlertMessage(alert),
+      severity: getAlertSeverity(alert),
+    })).sort((a, b) => {
+      // First sort by priority (highest first), then by time (most recent first)
+      if (a.severity.priority !== b.severity.priority) {
+        return b.severity.priority - a.severity.priority;
+      }
+      return new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime();
+    });
+  }, [alertLogs]);
 
   const timeAgo = (timestamp: string) => {
     if (!timestamp) return "";
@@ -229,7 +274,7 @@ export default function Alerts() {
             contentContainerStyle={styles.container}
             showsVerticalScrollIndicator={false}
           >
-            {alerts.length === 0 ? (
+            {processedAlerts.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="checkmark-circle" size={64} color="#10b981" />
                 <Text style={styles.emptyTitle}>All Systems Normal</Text>
@@ -241,17 +286,17 @@ export default function Alerts() {
               <>
                 <View style={styles.alertsHeader}>
                   <Text style={styles.alertCount}>
-                    {alerts.length} {alerts.length === 1 ? 'Alert' : 'Alerts'} Found
+                    {processedAlerts.length} {processedAlerts.length === 1 ? 'Alert' : 'Alerts'} Found
                   </Text>
-                  <Text style={styles.sortedByText}>Sorted by priority</Text>
+                  <Text style={styles.sortedByText}>Sorted by priority & time</Text>
                 </View>
                 
-                {alerts.map((alert, index) => {
+                {processedAlerts.map((alert, index) => {
                   const severity = alert.severity;
                   
                   return (
                     <View
-                      key={index}
+                      key={alert.id}
                       style={[
                         styles.alertCard,
                         { borderLeftColor: severity.color, borderLeftWidth: 4 }
@@ -265,24 +310,31 @@ export default function Alerts() {
                           <Text style={[styles.alertSeverity, { color: severity.color }]}>
                             {severity.label}
                           </Text>
-                          <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
+                          <Text style={styles.alertTime}>{timeAgo(alert.triggered_at)}</Text>
                         </View>
-                        <Text style={styles.alertStoreroom}>{alert.storeroomName}</Text>
+                        <Text style={styles.alertStoreroom}>
+                          {alert.room?.name || `Room ${alert.room_id}`}
+                        </Text>
                         <Text style={styles.alertMessage}>{alert.message}</Text>
                         
-                        <TouchableOpacity 
-                          style={styles.viewDetailsButton}
-                          onPress={() => router.push({
-                            pathname: "./storeroom-details",
-                            params: { 
-                              storeroomId: storerooms.find(room => room.name === alert.storeroomName)?.id || "",
-                              storeroomName: alert.storeroomName 
-                            },
-                          })}
-                        >
-                          <Text style={styles.viewDetailsText}>View Details</Text>
-                          <Ionicons name="chevron-forward" size={14} color="#0891b2" />
-                        </TouchableOpacity>
+                        <View style={styles.alertFooter}>
+                          <Text style={styles.alertStatus}>
+                            Status: {alert.status || 'Active'}
+                          </Text>
+                          <TouchableOpacity 
+                            style={styles.viewDetailsButton}
+                            onPress={() => router.push({
+                              pathname: "./storeroom-details",
+                              params: { 
+                                storeroomId: alert.room_id.toString(),
+                                storeroomName: alert.room?.name || `Room ${alert.room_id}`
+                              },
+                            })}
+                          >
+                            <Text style={styles.viewDetailsText}>View Details</Text>
+                            <Ionicons name="chevron-forward" size={14} color="#0891b2" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </View>
                   );
@@ -303,7 +355,10 @@ export default function Alerts() {
             }
           }}
           onNavigateAlerts={() => router.replace("/screens/alerts")}
-          alerts={alerts}
+          alerts={processedAlerts.map(alert => ({
+            message: alert.message,
+            timestamp: alert.triggered_at
+          }))}
           activeTab="alerts"
         />
       </View>
@@ -416,10 +471,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748b", // Slate-500
   },
+  alertFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  alertStatus: {
+    fontSize: 12,
+    color: "#64748b",
+    fontStyle: "italic",
+  },
   viewDetailsButton: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
     paddingVertical: 6,
     paddingHorizontal: 12,
     backgroundColor: "#f1f5f9", // Slate-100
@@ -470,3 +534,4 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 });
+

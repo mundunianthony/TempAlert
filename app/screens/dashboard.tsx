@@ -322,6 +322,16 @@ export default function Dashboard() {
       }));
   }, [storerooms]);
 
+  // Calculate average temperature
+  const averageTemperature = useMemo(() => {
+    const roomsWithTemp = storerooms.filter(room => 
+      room.current_temperature !== null && room.current_temperature !== undefined
+    );
+    if (roomsWithTemp.length === 0) return null;
+    const avgTemp = roomsWithTemp.reduce((sum, room) => sum + room.current_temperature!, 0) / roomsWithTemp.length;
+    return Math.round(avgTemp);
+  }, [storerooms]);
+
   // Determine how many alerts to show
   const alertsToShow = expandedAlerts ? alerts : alerts.slice(0, 3);
   const hasMoreAlerts = alerts.length > 3;
@@ -376,6 +386,39 @@ export default function Dashboard() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {/* Summary Cards */}
+          <View style={styles.summaryContainer}>
+            <View style={[styles.summaryCard, styles.summaryCardPrimary]}>
+              <View style={styles.summaryIconContainer}>
+                <Ionicons name="thermometer" size={24} color="#0891b2" />
+              </View>
+              <Text style={styles.summaryValue}>
+                {averageTemperature !== null ? `${averageTemperature}°C` : "N/A"}
+              </Text>
+              <Text style={styles.summaryLabel}>Avg Temp</Text>
+            </View>
+            
+            <TouchableOpacity
+              style={[styles.summaryCard, styles.summaryCardSecondary]}
+              onPress={() => router.push("/screens/alerts")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.summaryIconContainer}>
+                <Ionicons name="alert-circle" size={24} color="#f59e0b" />
+              </View>
+              <Text style={styles.summaryValue}>{alerts.length}</Text>
+              <Text style={styles.summaryLabel}>Active Alerts</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.summaryCard, styles.summaryCardTertiary]}>
+              <View style={styles.summaryIconContainer}>
+                <Ionicons name="cube" size={24} color="#8b5cf6" />
+              </View>
+              <Text style={styles.summaryValue}>{storerooms.length}</Text>
+              <Text style={styles.summaryLabel}>Total Rooms</Text>
+            </View>
+          </View>
+
           {/* Storeroom Overview */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Storeroom Overview</Text>
@@ -392,8 +435,17 @@ export default function Dashboard() {
               <Text style={styles.emptyStateText}>No storerooms available</Text>
             ) : (
               storerooms.map((room, index) => (
-                <View
+                <TouchableOpacity
                   key={room.id}
+                  onPress={() =>
+                    router.push({
+                      pathname: "./storeroom-details",
+                      params: {
+                        storeroomId: room.id,
+                        storeroomName: room.name,
+                      },
+                    })
+                  }
                   style={[
                     styles.storeroomItem,
                     index < storerooms.length - 1 && styles.divider,
@@ -433,12 +485,13 @@ export default function Dashboard() {
                       </View>
                     )}
                   </View>
-                </View>
+                  <Ionicons name="chevron-forward" size={20} color="#64748b" />
+                </TouchableOpacity>
               ))
             )}
           </View>
 
-          {/* Alerts Section */}
+          {/* Recent Alerts Section */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Alerts</Text>
             {alerts.length > 0 && (
@@ -457,7 +510,7 @@ export default function Dashboard() {
               <>
                 {alertsToShow.map((alert, index) => {
                   const severity = getAlertSeverity(alert.temperature);
-
+                  
                   return (
                     <View
                       key={index}
@@ -466,52 +519,32 @@ export default function Dashboard() {
                         index < alertsToShow.length - 1 && styles.divider,
                       ]}
                     >
-                      <View
-                        style={[
-                          styles.alertIconContainer,
-                          { backgroundColor: severity.bgColor },
-                        ]}
-                      >
+                      <View style={[styles.alertIconContainer, { backgroundColor: severity.bgColor }]}>
                         {severity.icon}
                       </View>
                       <View style={styles.alertContent}>
                         <View style={styles.alertHeader}>
-                          <Text
-                            style={[
-                              styles.alertSeverity,
-                              { color: severity.color },
-                            ]}
-                          >
+                          <Text style={[styles.alertSeverity, { color: severity.color }]}>
                             {severity.label}
                           </Text>
-                          <Text style={styles.alertTime}>
-                            {timeAgo(alert.timestamp)}
-                          </Text>
+                          <Text style={styles.alertTime}>{timeAgo(alert.timestamp)}</Text>
                         </View>
-                        <Text style={styles.alertLocation}>
-                          {alert.storeroomName}
-                        </Text>
+                        <Text style={styles.alertLocation}>{alert.storeroomName}</Text>
                         <Text style={styles.alertMessage}>{alert.message}</Text>
                       </View>
                     </View>
                   );
                 })}
-
-                {hasMoreAlerts && (
+                
+                {hasMoreAlerts && !expandedAlerts && (
                   <TouchableOpacity
                     style={styles.showMoreButton}
-                    onPress={() => setExpandedAlerts(!expandedAlerts)}
+                    onPress={() => setExpandedAlerts(true)}
                   >
                     <Text style={styles.showMoreText}>
-                      {expandedAlerts
-                        ? "Show Less"
-                        : `Show ${alerts.length - 3} More Alerts`}
+                      Show {alerts.length - 3} more alerts
                     </Text>
-                    <Ionicons
-                      name={expandedAlerts ? "chevron-up" : "chevron-down"}
-                      size={16}
-                      color="#0891b2"
-                    />
+                    <Ionicons name="chevron-down" size={16} color="#0891b2" />
                   </TouchableOpacity>
                 )}
               </>
@@ -520,8 +553,7 @@ export default function Dashboard() {
                 <Ionicons name="checkmark-circle" size={48} color="#10b981" />
                 <Text style={styles.emptyAlertsTitle}>All Systems Normal</Text>
                 <Text style={styles.emptyAlertsText}>
-                  No active alerts at this time. All storerooms are operating
-                  within normal temperature ranges.
+                  No active alerts at this time. All storerooms are operating within normal temperature ranges.
                 </Text>
               </View>
             )}
@@ -529,7 +561,6 @@ export default function Dashboard() {
         </ScrollView>
       )}
 
-      {/* Bottom Nav */}
       <Navbar
         onRefresh={handleRefresh}
         onNavigateProfile={() => router.push("/screens/profile")}
@@ -546,18 +577,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc", // Light slate background
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f8fafc",
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: "#64748b", // Slate-500
-    textAlign: "center",
   },
   header: {
     flexDirection: "row",
@@ -591,13 +610,75 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingBottom: 100,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#64748b", // Slate-500
+    textAlign: "center",
+  },
+  summaryContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 24,
+    gap: 12,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  summaryCardPrimary: {
+    borderLeftWidth: 4,
+    borderLeftColor: "#0891b2",
+  },
+  summaryCardSecondary: {
+    borderLeftWidth: 4,
+    borderLeftColor: "#f59e0b",
+  },
+  summaryCardTertiary: {
+    borderLeftWidth: 4,
+    borderLeftColor: "#8b5cf6",
+  },
+  summaryIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#f1f5f9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  summaryValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: "500",
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
@@ -681,6 +762,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(16, 185, 129, 0.1)",
     borderRadius: 4,
     padding: 4,
+    alignSelf: "flex-start",
+    marginTop: 4,
   },
   dummyBadgeText: {
     fontSize: 12,
@@ -784,4 +867,3 @@ const styles = StyleSheet.create({
     borderBottomColor: "#f1f5f9",
   },
 });
-
