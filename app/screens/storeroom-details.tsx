@@ -173,7 +173,7 @@ export default function StoreroomDetails() {
     
     if (alert.alert_type === 'low' || temperature <= 15) {
       return {
-        icon: "snow-outline" as const,
+        icon: "snow" as const,
         color: "#3b82f6",
         bgColor: "#dbeafe",
         label: "Too Cold",
@@ -181,21 +181,21 @@ export default function StoreroomDetails() {
     } else if (alert.alert_type === 'high' || temperature >= 25) {
       if (temperature <= 30) {
         return {
-          icon: "alert-circle-outline" as const,
+          icon: "alert-circle" as const,
           color: "#f59e0b",
           bgColor: "#fef3c7",
           label: "Warning",
         };
       } else if (temperature <= 40) {
         return {
-          icon: "flame-outline" as const,
+          icon: "flame" as const,
           color: "#f97316",
           bgColor: "#ffedd5",
           label: "Too Hot",
         };
       } else {
         return {
-          icon: "warning-outline" as const,
+          icon: "warning" as const,
           color: "#ef4444",
           bgColor: "#fee2e2",
           label: "Critical",
@@ -203,9 +203,9 @@ export default function StoreroomDetails() {
       }
     }
     return {
-      icon: "information-circle-outline" as const,
-      color: "#6b7280",
-      bgColor: "#f3f4f6",
+      icon: "information-circle" as const,
+      color: "#94a3b8",
+      bgColor: "#f1f5f9",
       label: "Info",
     };
   };
@@ -274,24 +274,35 @@ export default function StoreroomDetails() {
             <Text style={styles.title} numberOfLines={1}>
               {storeroomName || "Storeroom Details"}
             </Text>
-            <Text style={styles.subtitle}>Alert History</Text>
+            <Text style={styles.subtitle}>Alert History & Analytics</Text>
           </View>
           <TouchableOpacity 
             style={styles.refreshButton}
             onPress={fetchAlertsHistory}
           >
-            <Ionicons name="refresh" size={20} color="#64748b" />
+            <Ionicons name="refresh" size={22} color="#64748b" />
           </TouchableOpacity>
         </View>
 
         {/* Filter Controls */}
         <View style={styles.filterContainer}>
-          <Text style={styles.filterLabel}>Time Period:</Text>
+          <View style={styles.filterHeader}>
+            <Text style={styles.filterLabel}>Time Period</Text>
+            <View style={styles.filterBadge}>
+              <Ionicons name="funnel" size={12} color="#64748b" />
+              <Text style={styles.filterBadgeText}>Filter</Text>
+            </View>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScrollView}>
             <TouchableOpacity
               style={[styles.filterButton, selectedPeriod === '24h' && styles.filterButtonActive]}
               onPress={() => setSelectedPeriod('24h')}
             >
+              <Ionicons 
+                name="time" 
+                size={16} 
+                color={selectedPeriod === '24h' ? "#ffffff" : "#64748b"} 
+              />
               <Text style={[styles.filterButtonText, selectedPeriod === '24h' && styles.filterButtonTextActive]}>
                 24 Hours
               </Text>
@@ -300,6 +311,11 @@ export default function StoreroomDetails() {
               style={[styles.filterButton, selectedPeriod === '7d' && styles.filterButtonActive]}
               onPress={() => setSelectedPeriod('7d')}
             >
+              <Ionicons 
+                name="calendar" 
+                size={16} 
+                color={selectedPeriod === '7d' ? "#ffffff" : "#64748b"} 
+              />
               <Text style={[styles.filterButtonText, selectedPeriod === '7d' && styles.filterButtonTextActive]}>
                 7 Days
               </Text>
@@ -308,6 +324,11 @@ export default function StoreroomDetails() {
               style={[styles.filterButton, selectedPeriod === '30d' && styles.filterButtonActive]}
               onPress={() => setSelectedPeriod('30d')}
             >
+              <Ionicons 
+                name="calendar-outline" 
+                size={16} 
+                color={selectedPeriod === '30d' ? "#ffffff" : "#64748b"} 
+              />
               <Text style={[styles.filterButtonText, selectedPeriod === '30d' && styles.filterButtonTextActive]}>
                 30 Days
               </Text>
@@ -316,6 +337,11 @@ export default function StoreroomDetails() {
               style={[styles.filterButton, selectedPeriod === 'custom' && styles.filterButtonActive]}
               onPress={() => setShowCustomDateModal(true)}
             >
+              <Ionicons 
+                name="options" 
+                size={16} 
+                color={selectedPeriod === 'custom' ? "#ffffff" : "#64748b"} 
+              />
               <Text style={[styles.filterButtonText, selectedPeriod === 'custom' && styles.filterButtonTextActive]}>
                 Custom
               </Text>
@@ -325,15 +351,28 @@ export default function StoreroomDetails() {
 
         {/* Results Summary */}
         <View style={styles.summaryContainer}>
-          <Text style={styles.summaryText}>
-            {filteredAlerts.length} {filteredAlerts.length === 1 ? 'alert' : 'alerts'} found for {getPeriodLabel().toLowerCase()}
-        </Text>
+          <View style={styles.summaryContent}>
+            <View style={styles.summaryIconContainer}>
+              <Ionicons name="analytics" size={20} color="#0891b2" />
+            </View>
+            <View style={styles.summaryTextContainer}>
+              <Text style={styles.summaryText}>
+                {filteredAlerts.length} {filteredAlerts.length === 1 ? 'alert' : 'alerts'} found
+              </Text>
+              <Text style={styles.summarySubtext}>
+                for {getPeriodLabel().toLowerCase()}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0891b2" />
-            <Text style={styles.loadingText}>Loading alert history...</Text>
+            <View style={styles.loadingCard}>
+              <ActivityIndicator size="large" color="#0891b2" />
+              <Text style={styles.loadingText}>Loading alert history...</Text>
+              <Text style={styles.loadingSubtext}>Analyzing temperature data</Text>
+            </View>
           </View>
         ) : (
         <ScrollView
@@ -341,7 +380,7 @@ export default function StoreroomDetails() {
           showsVerticalScrollIndicator={false}
         >
             {filteredAlerts.length > 0 ? (
-              filteredAlerts.map((alert) => {
+              filteredAlerts.map((alert, index) => {
                 const severity = getAlertSeverity(alert);
                 
                 return (
@@ -349,25 +388,47 @@ export default function StoreroomDetails() {
                     key={alert.id}
                     style={[
                       styles.alertCard,
-                      { borderLeftColor: severity.color, borderLeftWidth: 4 }
+                      { 
+                        borderLeftColor: severity.color, 
+                        borderLeftWidth: 5,
+                        marginBottom: index === filteredAlerts.length - 1 ? 20 : 16
+                      }
                     ]}
                   >
-                    <View style={[styles.alertIconContainer, { backgroundColor: severity.bgColor }]}>
-                      <Ionicons name={severity.icon} size={24} color={severity.color} />
-                    </View>
-                    <View style={styles.alertContent}>
-                      <View style={styles.alertHeader}>
-                        <Text style={[styles.alertSeverity, { color: severity.color }]}>
-                          {severity.label}
-                        </Text>
-                        <Text style={styles.alertTime}>{timeAgo(alert.triggered_at)}</Text>
+                    <View style={styles.alertCardContent}>
+                      <View style={styles.alertIconWrapper}>
+                        <View style={[styles.alertIconContainer, { backgroundColor: severity.bgColor }]}>
+                          <Ionicons name={severity.icon} size={28} color={severity.color} />
+                        </View>
                       </View>
-                      <Text style={styles.alertMessage}>{getAlertMessage(alert)}</Text>
-                      <View style={styles.alertFooter}>
-                        <Text style={styles.alertDate}>{formatDate(alert.triggered_at)}</Text>
-                        <Text style={styles.alertStatus}>
-                          Status: {alert.status || 'Active'}
-                        </Text>
+                      
+                      <View style={styles.alertContent}>
+                        <View style={styles.alertHeader}>
+                          <View style={styles.alertHeaderLeft}>
+                            <Text style={[styles.alertSeverity, { color: severity.color }]}>
+                              {severity.label}
+                            </Text>
+                            <View style={styles.alertTimeBadge}>
+                              <Ionicons name="time" size={12} color="#94a3b8" />
+                              <Text style={styles.alertTime}>{timeAgo(alert.triggered_at)}</Text>
+                            </View>
+                          </View>
+                        </View>
+                        
+                        <Text style={styles.alertMessage}>{getAlertMessage(alert)}</Text>
+                        
+                        <View style={styles.alertFooter}>
+                          <View style={styles.alertDateContainer}>
+                            <Ionicons name="calendar" size={14} color="#94a3b8" />
+                            <Text style={styles.alertDate}>{formatDate(alert.triggered_at)}</Text>
+                          </View>
+                          <View style={styles.alertStatusContainer}>
+                            <View style={[styles.statusDot, { backgroundColor: severity.color }]} />
+                            <Text style={styles.alertStatus}>
+                              {alert.status || 'Active'}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -375,11 +436,17 @@ export default function StoreroomDetails() {
               })
             ) : (
               <View style={styles.emptyContainer}>
-                <Ionicons name="calendar-outline" size={64} color="#94a3b8" />
+                <View style={styles.emptyIconContainer}>
+                  <Ionicons name="document-text-outline" size={80} color="#94a3b8" />
+                </View>
                 <Text style={styles.emptyTitle}>No Alerts Found</Text>
                 <Text style={styles.emptyText}>
                   No alerts were recorded for {storeroomName || 'this storeroom'} during the selected time period.
                 </Text>
+                <View style={styles.emptyBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                  <Text style={styles.emptyBadgeText}>System Normal</Text>
+                </View>
               </View>
           )}
         </ScrollView>
@@ -394,26 +461,40 @@ export default function StoreroomDetails() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select Custom Date Range</Text>
-              
-              <View style={styles.dateInputContainer}>
-                <Text style={styles.dateLabel}>Start Date:</Text>
-                <TextInput
-                  style={styles.dateInput}
-                  placeholder="YYYY-MM-DD"
-                  value={customStartDate}
-                  onChangeText={setCustomStartDate}
-                />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Custom Date Range</Text>
+                <TouchableOpacity 
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowCustomDateModal(false)}
+                >
+                  <Ionicons name="close" size={24} color="#64748b" />
+                </TouchableOpacity>
               </View>
               
               <View style={styles.dateInputContainer}>
-                <Text style={styles.dateLabel}>End Date:</Text>
-                <TextInput
-                  style={styles.dateInput}
-                  placeholder="YYYY-MM-DD"
-                  value={customEndDate}
-                  onChangeText={setCustomEndDate}
-                />
+                <Text style={styles.dateLabel}>Start Date</Text>
+                <View style={styles.dateInputWrapper}>
+                  <Ionicons name="calendar" size={20} color="#64748b" />
+                  <TextInput
+                    style={styles.dateInput}
+                    placeholder="YYYY-MM-DD"
+                    value={customStartDate}
+                    onChangeText={setCustomStartDate}
+                  />
+                </View>
+              </View>
+              
+              <View style={styles.dateInputContainer}>
+                <Text style={styles.dateLabel}>End Date</Text>
+                <View style={styles.dateInputWrapper}>
+                  <Ionicons name="calendar" size={20} color="#64748b" />
+                  <TextInput
+                    style={styles.dateInput}
+                    placeholder="YYYY-MM-DD"
+                    value={customEndDate}
+                    onChangeText={setCustomEndDate}
+                  />
+                </View>
               </View>
               
               <View style={styles.modalButtons}>
@@ -427,7 +508,7 @@ export default function StoreroomDetails() {
                   style={[styles.modalButton, styles.modalButtonApply]}
                   onPress={applyCustomDateRange}
                 >
-                  <Text style={styles.modalButtonTextApply}>Apply</Text>
+                  <Text style={styles.modalButtonTextApply}>Apply Filter</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -461,248 +542,416 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    paddingVertical: 20,
+    backgroundColor: "#f8fafc",
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f1f5f9",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#ffffff",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   headerContent: {
     flex: 1,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 24,
+    fontWeight: "800",
     color: "#0f172a",
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 14,
     color: "#64748b",
-    marginTop: 2,
+    marginTop: 4,
+    fontWeight: "400",
   },
   refreshButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f1f5f9",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#ffffff",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   filterContainer: {
     backgroundColor: "#ffffff",
     paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    paddingVertical: 20,
+    marginHorizontal: 24,
+    marginBottom: 16,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  filterHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
   },
   filterLabel: {
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0f172a",
+  },
+  filterBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f1f5f9",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  filterBadgeText: {
+    fontSize: 12,
+    color: "#64748b",
+    marginLeft: 4,
     fontWeight: "500",
-    color: "#374151",
-    marginBottom: 12,
   },
   filterScrollView: {
     flexDirection: "row",
   },
   filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#f1f5f9",
-    marginRight: 8,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: "#f8fafc",
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   filterButtonActive: {
     backgroundColor: "#0891b2",
+    borderColor: "#0891b2",
   },
   filterButtonText: {
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
     color: "#64748b",
+    marginLeft: 6,
   },
   filterButtonTextActive: {
     color: "#ffffff",
   },
   summaryContainer: {
     backgroundColor: "#ffffff",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    marginHorizontal: 24,
+    marginBottom: 16,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  summaryContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  summaryIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#e0f2fe",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  summaryTextContainer: {
+    flex: 1,
   },
   summaryText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0f172a",
+  },
+  summarySubtext: {
     fontSize: 14,
     color: "#64748b",
-    fontStyle: "italic",
+    marginTop: 2,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#f8fafc",
+    paddingHorizontal: 24,
+  },
+  loadingCard: {
+    backgroundColor: "#ffffff",
+    padding: 32,
+    borderRadius: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
+    marginTop: 16,
+    fontSize: 18,
+    color: "#0f172a",
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  loadingSubtext: {
+    marginTop: 8,
+    fontSize: 14,
     color: "#64748b",
     textAlign: "center",
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 100,
     flexGrow: 1,
   },
   alertCard: {
-    flexDirection: "row",
     backgroundColor: "#ffffff",
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: 20,
     overflow: "hidden",
-    elevation: 2,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  alertCardContent: {
+    flexDirection: "row",
+    padding: 20,
+  },
+  alertIconWrapper: {
+    marginRight: 16,
   },
   alertIconContainer: {
-    width: 48,
-    justifyContent: "flex-start",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
     alignItems: "center",
-    paddingTop: 16,
-    paddingHorizontal: 12,
   },
   alertContent: {
     flex: 1,
-    padding: 16,
   },
   alertHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 8,
   },
+  alertHeaderLeft: {
+    flex: 1,
+  },
   alertSeverity: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  alertTimeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: "flex-start",
   },
   alertTime: {
     fontSize: 12,
-    color: "#64748b",
+    color: "#94a3b8",
+    marginLeft: 4,
+    fontWeight: "500",
   },
   alertMessage: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#334155",
-    lineHeight: 20,
-    marginBottom: 12,
+    lineHeight: 22,
+    marginBottom: 16,
   },
   alertFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
+  alertDateContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   alertDate: {
     fontSize: 12,
     color: "#64748b",
+    marginLeft: 6,
+    fontWeight: "500",
+  },
+  alertStatusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
   alertStatus: {
     fontSize: 12,
     color: "#64748b",
-    fontStyle: "italic",
+    fontWeight: "500",
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 60,
+    paddingVertical: 80,
     paddingHorizontal: 24,
   },
+  emptyIconContainer: {
+    backgroundColor: "#f1f5f9",
+    padding: 24,
+    borderRadius: 40,
+    marginBottom: 24,
+  },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#64748b",
-    marginTop: 16,
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 12,
+    textAlign: "center",
   },
   emptyText: {
     fontSize: 16,
-    color: "#94a3b8",
+    color: "#64748b",
     textAlign: "center",
     lineHeight: 24,
+    marginBottom: 24,
+  },
+  emptyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0fdf4",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  emptyBadgeText: {
+    fontSize: 14,
+    color: "#10b981",
+    marginLeft: 6,
+    fontWeight: "600",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 24,
   },
   modalContent: {
     backgroundColor: "#ffffff",
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 24,
-    width: "90%",
+    width: "100%",
     maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
     color: "#0f172a",
-    marginBottom: 20,
-    textAlign: "center",
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f1f5f9",
+    justifyContent: "center",
+    alignItems: "center",
   },
   dateInputContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   dateLabel: {
     fontSize: 14,
-    fontWeight: "500",
-    color: "#374151",
+    fontWeight: "600",
+    color: "#0f172a",
     marginBottom: 8,
   },
+  dateInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#f8fafc",
+  },
   dateInput: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    flex: 1,
     fontSize: 16,
     color: "#0f172a",
+    marginLeft: 12,
   },
   modalButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    marginTop: 24,
+    gap: 12,
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginHorizontal: 6,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
   },
   modalButtonCancel: {
     backgroundColor: "#f1f5f9",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   modalButtonApply: {
     backgroundColor: "#0891b2",
   },
   modalButtonTextCancel: {
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "600",
     color: "#64748b",
-    textAlign: "center",
   },
   modalButtonTextApply: {
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "600",
     color: "#ffffff",
-    textAlign: "center",
   },
 });
 
