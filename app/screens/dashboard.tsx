@@ -22,7 +22,7 @@ import {
 import Navbar from "../../src/components/Navbar";
 import { isDummyRoom, getDummyRoomData, getFirstRoomId } from "../../src/utils/dummyDataGenerator";
 import { getDemoRoomThreshold } from '../../src/utils/localThresholds';
-import { fetchAllAlertsWithDummyCached, AlertLog } from '../../src/utils/alertsFetcher';
+import { fetchAllAlertsWithDummyPersistent, AlertLog } from '../../src/utils/alertsFetcher';
 
 interface Storeroom {
   id: number;
@@ -153,7 +153,7 @@ export default function Dashboard() {
         );
         setStorerooms(roomsWithThresholds);
         // Fetch alerts (real + dummy)
-        const allAlerts = await fetchAllAlertsWithDummyCached(token);
+        const allAlerts = await fetchAllAlertsWithDummyPersistent(token);
         setAlerts(allAlerts);
         setLoading(false);
       } catch (error) {

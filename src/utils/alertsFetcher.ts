@@ -26,6 +26,8 @@ export interface Room {
 
 const ALERTS_CACHE_KEY = 'alerts_cache_v1';
 const ALERTS_CACHE_TIME_MS = 2 * 60 * 1000; // 2 minutes
+const ALERTS_PERSISTENT_LOG_KEY = 'alerts_persistent_log_v1';
+const ALERTS_RETENTION_DAYS = 30;
 
 /**
  * Fetches all alert logs from the API and synthesizes alerts for dummy rooms if needed.
@@ -122,4 +124,42 @@ export async function fetchAllAlertsWithDummyCached(userToken: string): Promise<
         // Ignore cache write errors
     }
     return freshAlerts;
+}
+
+function pruneOldAlerts(alerts: AlertLog[]): AlertLog[] {
+    const cutoff = Date.now() - ALERTS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    return alerts.filter(a => new Date(a.triggered_at).getTime() >= cutoff);
+}
+
+function mergeAlerts(existing: AlertLog[], incoming: AlertLog[]): AlertLog[] {
+    const map = new Map<string | number, AlertLog>();
+    for (const alert of existing) {
+        map.set(alert.id, alert);
+    }
+    for (const alert of incoming) {
+        map.set(alert.id, alert);
+    }
+    return Array.from(map.values());
+}
+
+export async function fetchAllAlertsWithDummyPersistent(userToken: string): Promise<AlertLog[]> {
+    // Fetch new alerts (real + dummy)
+    const freshAlerts = await fetchAllAlertsWithDummy(userToken);
+    // Load persistent log
+    let persistentAlerts: AlertLog[] = [];
+    try {
+        const raw = await AsyncStorage.getItem(ALERTS_PERSISTENT_LOG_KEY);
+        if (raw) {
+            persistentAlerts = JSON.parse(raw);
+        }
+    } catch { }
+    // Merge and prune
+    let merged = mergeAlerts(persistentAlerts, freshAlerts);
+    merged = pruneOldAlerts(merged);
+    // Save back to persistent log
+    try {
+        await AsyncStorage.setItem(ALERTS_PERSISTENT_LOG_KEY, JSON.stringify(merged));
+    } catch { }
+    // Return sorted by triggered_at
+    return merged.sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime());
 } 

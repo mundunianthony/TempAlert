@@ -15,7 +15,7 @@ import { useAuth } from "../../src/context/AuthContext";
 import { useRouter } from "expo-router";
 import Navbar from "../../src/components/Navbar";
 import { Ionicons } from "@expo/vector-icons";
-import { fetchAllAlertsWithDummy, fetchAllAlertsWithDummyCached, AlertLog } from '../../src/utils/alertsFetcher';
+import { fetchAllAlertsWithDummy, fetchAllAlertsWithDummyCached, fetchAllAlertsWithDummyPersistent, AlertLog } from '../../src/utils/alertsFetcher';
 
 interface Room {
   id: number;
@@ -44,12 +44,7 @@ export default function Alerts() {
 
   const fetchAlertsData = async (forceRefresh = false) => {
     try {
-      let allAlerts;
-      if (forceRefresh) {
-        allAlerts = await fetchAllAlertsWithDummy(user.token || '');
-      } else {
-        allAlerts = await fetchAllAlertsWithDummyCached(user.token || '');
-      }
+      const allAlerts = await fetchAllAlertsWithDummyPersistent(user.token || '');
       setAlertLogs(allAlerts);
       setLoading(false);
       setRefreshing(false);
