@@ -69,37 +69,40 @@ export const getDummyRoomData = async (roomId: number, roomName: string): Promis
             const now = new Date();
             const lastUpdate = new Date(data.lastUpdated);
 
-            // Update temperature every 5 minutes
-            if (now.getTime() - lastUpdate.getTime() > 5 * 60 * 1000) {
+            // Only update temperature if at least 1 hour has passed
+            if (now.getTime() - lastUpdate.getTime() > 60 * 60 * 1000) {
                 const baseTemp = 22; // Base temperature for dummy rooms
-                const newTemp = generateTemperatureVariation(baseTemp, roomId);
+                const newTemp = Math.round(generateTemperatureVariation(baseTemp, roomId) * 10) / 10;
 
-                data.currentTemperature = Math.round(newTemp * 10) / 10;
-                data.lastUpdated = now.toISOString();
+                // Only update lastUpdated if temperature actually changes
+                if (newTemp !== data.currentTemperature) {
+                    data.currentTemperature = newTemp;
+                    data.lastUpdated = now.toISOString();
 
-                // Add to history (keep last 24 hours)
-                data.history.push({
-                    temperature: data.currentTemperature,
-                    timestamp: now.toISOString()
-                });
+                    // Add to history (keep last 24 hours)
+                    data.history.push({
+                        temperature: data.currentTemperature,
+                        timestamp: now.toISOString()
+                    });
 
-                // Keep only last 24 hours of history
-                if (data.history.length > 24) {
-                    data.history = data.history.slice(-24);
+                    // Keep only last 24 hours of history
+                    if (data.history.length > 24) {
+                        data.history = data.history.slice(-24);
+                    }
+
+                    await AsyncStorage.setItem(storageKey, JSON.stringify(data));
                 }
-
-                await AsyncStorage.setItem(storageKey, JSON.stringify(data));
             }
 
             return data;
         } else {
             // Create new dummy data
             const baseTemp = 22;
-            const currentTemp = generateTemperatureVariation(baseTemp, roomId);
+            const currentTemp = Math.round(generateTemperatureVariation(baseTemp, roomId) * 10) / 10;
             const history = generateHistoricalData(roomId, baseTemp);
 
             const newData: DummyRoomData = {
-                currentTemperature: Math.round(currentTemp * 10) / 10,
+                currentTemperature: currentTemp,
                 lastUpdated: new Date().toISOString(),
                 history
             };
