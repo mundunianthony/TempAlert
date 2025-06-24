@@ -18,16 +18,22 @@ import { Ionicons } from "@expo/vector-icons";
 import Navbar from "../../src/components/Navbar";
 import { isDummyRoom, getDummyRoomData } from "../../src/utils/dummyDataGenerator";
 import { getDemoRoomThreshold } from "../../src/utils/localThresholds";
+import { fetchAllAlertsWithDummyPersistent, AlertLog as GlobalAlertLog } from '../../src/utils/alertsFetcher';
 
 interface AlertLog {
-  id: number;
+  id: number | string;
   room_id: number;
-  sensor_id: number;
+  sensor_id: number | null;
   temperature_value: number;
   alert_type: string;
   triggered_at: string;
   resolved_at?: string;
   status: string;
+  room?: {
+    id: number;
+    name: string;
+    description?: string;
+  };
 }
 
 type FilterPeriod = '24h' | '7d' | '30d' | 'custom';
@@ -60,44 +66,12 @@ export default function StoreroomDetails() {
   const fetchAlertsHistory = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`https://tempalert.onensensy.com/api/alert-logs?options[room_id]=${storeroomId}`, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${user.token || ''}`,
-        },
-      });
-      const data = await response.json();
-      let alertsData = data.data || [];
-
-      // If this is a dummy room, synthesize an alert if needed
-      const isDummy = await isDummyRoom(Number(storeroomId));
-      if (isDummy) {
-        const dummyData = await getDummyRoomData(Number(storeroomId), storeroomName || '');
-        let threshold = null;
-        try {
-          threshold = await getDemoRoomThreshold(Number(storeroomId));
-        } catch {}
-        if (threshold && dummyData.currentTemperature !== null && dummyData.currentTemperature !== undefined) {
-          const temp = dummyData.currentTemperature;
-          const min = threshold.min_temperature;
-          const max = threshold.max_temperature;
-          if (temp < min || temp > max) {
-            // Synthesize an alert
-            alertsData.unshift({
-              id: `dummy-${storeroomId}-${dummyData.lastUpdated}`,
-              room_id: Number(storeroomId),
-              sensor_id: null,
-              temperature_value: temp,
-              alert_type: temp < min ? 'low' : 'high',
-              triggered_at: dummyData.lastUpdated,
-              status: 'Active',
-            });
-          }
-        }
-      }
-
+      // Use persistent alerts (all alerts, including previous days)
+      const allAlerts: AlertLog[] = await fetchAllAlertsWithDummyPersistent(user.token || '');
+      // Filter for this storeroom
+      const roomAlerts = allAlerts.filter(alert => String(alert.room_id) === String(storeroomId));
       // Sort by triggered_at (most recent first)
-      const sortedAlerts = alertsData.sort((a: AlertLog, b: AlertLog) => 
+      const sortedAlerts = roomAlerts.sort((a: AlertLog, b: AlertLog) => 
         new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime()
       );
       setAlerts(sortedAlerts);
