@@ -19,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 const backgroundImage = {
-  uri: "https://images.unsplash.com/photo-1744125235979-4286ddb612b5?q=80&w=1974&auto=format&fit=crop",
+  uri: "https://i.pinimg.com/736x/7c/64/a2/7c64a20eaac4d7e5ee14085b69ac106f.jpg",
 };
 
 const { width } = Dimensions.get('window');
