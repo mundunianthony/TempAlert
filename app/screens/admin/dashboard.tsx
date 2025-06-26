@@ -248,57 +248,135 @@ export default function AdminDashboard() {
   }, [alerts]);
 
   const getStatusColor = (room: Storeroom) => {
-    if (!room.current_temperature || !room.threshold) {
+    // For real rooms without sensor data, show gray
+    if (!room.is_dummy && (!room.current_temperature || !room.threshold)) {
+      return styles.statusUnknown;
+    }
+    
+    // For dummy rooms without data, show gray
+    if (room.is_dummy && !room.current_temperature) {
       return styles.statusUnknown;
     }
 
-    const temp = room.current_temperature;
-    const min = room.threshold.min_temperature;
-    const max = room.threshold.max_temperature;
-
-    if (temp < min) {
-      return styles.statusLow;
-    } else if (temp > max) {
-      return styles.statusHigh;
-    } else {
-      return styles.statusNormal;
+    // For dummy rooms with temperature but no threshold, use default thresholds
+    if (room.is_dummy && room.current_temperature && !room.threshold) {
+      const temp = room.current_temperature;
+      const defaultMin = 18;
+      const defaultMax = 25;
+      
+      if (temp < defaultMin) {
+        return styles.statusLow;
+      } else if (temp > defaultMax) {
+        return styles.statusHigh;
+      } else {
+        return styles.statusNormal;
+      }
     }
+
+    // For rooms with both temperature and threshold
+    if (room.current_temperature && room.threshold) {
+      const temp = room.current_temperature;
+      const min = room.threshold.min_temperature;
+      const max = room.threshold.max_temperature;
+
+      if (temp < min) {
+        return styles.statusLow;
+      } else if (temp > max) {
+        return styles.statusHigh;
+      } else {
+        return styles.statusNormal;
+      }
+    }
+
+    return styles.statusUnknown;
   };
 
   const getStatusIcon = (room: Storeroom) => {
-    if (!room.current_temperature || !room.threshold) {
+    // For real rooms without sensor data, show sensor icon
+    if (!room.is_dummy && (!room.current_temperature || !room.threshold)) {
+      return <Ionicons name="sensor-outline" size={18} color="#6b7280" />;
+    }
+    
+    // For dummy rooms without data, show help icon
+    if (room.is_dummy && !room.current_temperature) {
       return <Ionicons name="help-circle" size={18} color="#6b7280" />;
     }
 
-    const temp = room.current_temperature;
-    const min = room.threshold.min_temperature;
-    const max = room.threshold.max_temperature;
-
-    if (temp < min) {
-      return <Ionicons name="snow" size={18} color="#3b82f6" />;
-    } else if (temp > max) {
-      return <Ionicons name="flame" size={18} color="#ef4444" />;
-    } else {
-      return <Ionicons name="checkmark-circle" size={18} color="#10b981" />;
+    // For dummy rooms with temperature but no threshold, use default thresholds
+    if (room.is_dummy && room.current_temperature && !room.threshold) {
+      const temp = room.current_temperature;
+      const defaultMin = 18;
+      const defaultMax = 25;
+      
+      if (temp < defaultMin) {
+        return <Ionicons name="thermometer-outline" size={18} color="#3b82f6" />;
+      } else if (temp > defaultMax) {
+        return <Ionicons name="flame" size={18} color="#ef4444" />;
+      } else {
+        return <Ionicons name="checkmark-circle" size={18} color="#10b981" />;
+      }
     }
+
+    // For rooms with both temperature and threshold
+    if (room.current_temperature && room.threshold) {
+      const temp = room.current_temperature;
+      const min = room.threshold.min_temperature;
+      const max = room.threshold.max_temperature;
+
+      if (temp < min) {
+        return <Ionicons name="thermometer-outline" size={18} color="#3b82f6" />;
+      } else if (temp > max) {
+        return <Ionicons name="flame" size={18} color="#ef4444" />;
+      } else {
+        return <Ionicons name="checkmark-circle" size={18} color="#10b981" />;
+      }
+    }
+
+    return <Ionicons name="help-circle" size={18} color="#6b7280" />;
   };
 
   const getStatusText = (room: Storeroom) => {
-    if (!room.current_temperature || !room.threshold) {
-      return "Unknown";
+    // For real rooms without sensor data, show "No Sensor"
+    if (!room.is_dummy && (!room.current_temperature || !room.threshold)) {
+      return "No Sensor";
+    }
+    
+    // For dummy rooms without data, show "No Data"
+    if (room.is_dummy && !room.current_temperature) {
+      return "No Data";
     }
 
-    const temp = room.current_temperature;
-    const min = room.threshold.min_temperature;
-    const max = room.threshold.max_temperature;
-
-    if (temp < min) {
-      return "Low";
-    } else if (temp > max) {
-      return "High";
-    } else {
-      return "Normal";
+    // For dummy rooms with temperature but no threshold, use default thresholds
+    if (room.is_dummy && room.current_temperature && !room.threshold) {
+      const temp = room.current_temperature;
+      const defaultMin = 18; // Default minimum temperature
+      const defaultMax = 25; // Default maximum temperature
+      
+      if (temp < defaultMin) {
+        return "Low";
+      } else if (temp > defaultMax) {
+        return "High";
+      } else {
+        return "Normal";
+      }
     }
+
+    // For rooms with both temperature and threshold
+    if (room.current_temperature && room.threshold) {
+      const temp = room.current_temperature;
+      const min = room.threshold.min_temperature;
+      const max = room.threshold.max_temperature;
+
+      if (temp < min) {
+        return "Low";
+      } else if (temp > max) {
+        return "High";
+      } else {
+        return "Normal";
+      }
+    }
+
+    return "Unknown";
   };
 
   if (!user || !isAdmin) {
@@ -425,14 +503,16 @@ export default function AdminDashboard() {
                             {getStatusText(room)}
                       </Text>
                         </View>
-                    </View>
+                      </View>
 
                       <View style={styles.storeroomDetails}>
                         <Text style={styles.temperatureText}>
                           {room.current_temperature !== null && room.current_temperature !== undefined
                             ? `${room.current_temperature}°C`
-                            : "No data"}
-                      </Text>
+                            : room.is_dummy 
+                              ? "22.0°C" // Default dummy temperature
+                              : "No Sensor"} {/* Real room without sensor */}
+                        </Text>
                         <Text style={styles.lastUpdatedText}>
                           Updated {room.last_reading_time ? getTimeAgo(room.last_reading_time) : "Unknown time"}
                         </Text>
@@ -447,6 +527,12 @@ export default function AdminDashboard() {
                       {room.is_dummy && (
                         <View style={styles.dummyBadge}>
                           <Text style={styles.dummyBadgeText}>Demo Data</Text>
+                        </View>
+                      )}
+
+                      {!room.is_dummy && (
+                        <View style={styles.realBadge}>
+                          <Text style={styles.realBadgeText}>Real Sensor</Text>
                         </View>
                       )}
                     </View>
@@ -699,6 +785,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   dummyBadgeText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  realBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#0891b2",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  realBadgeText: {
     color: "#ffffff",
     fontSize: 10,
     fontWeight: "600",

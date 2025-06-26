@@ -322,32 +322,77 @@ export default function RoomsScreen() {
     }
     setThresholdLoading(true);
     try {
-      const thresholdRequestData = {
-        room_id: selectedRoom.id.toString(),
-        min_temperature: minTemp.toString(),
-        max_temperature: maxTemp.toString(),
-      };
-      const response = await fetch('https://tempalert.onensensy.com/api/thresholds', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(thresholdRequestData),
+      // Check if threshold already exists for this room
+      const existingThreshold = getThresholdForRoom(selectedRoom.id);
+      const isDummy = await isDummyRoom(selectedRoom.id);
+      
+      console.log(`🔧 Threshold operation for room ${selectedRoom.id}:`, {
+        roomName: selectedRoom.name,
+        isDummy,
+        existingThreshold: existingThreshold ? `ID: ${existingThreshold.id}` : 'None',
+        operation: existingThreshold ? 'UPDATE' : 'CREATE'
       });
-      const data = await response.json();
-      if (response.ok && data.data) {
-        Alert.alert('Success', 'Threshold created successfully');
+      
+      if (isDummy) {
+        // For dummy rooms, always use local storage
+        await saveDemoRoomThreshold(selectedRoom.id, { min_temperature: minTemp, max_temperature: maxTemp });
+        Alert.alert('Success', 'Threshold set successfully.');
         setShowThresholdModal(false);
         setNewThreshold({ min_temperature: '', max_temperature: '' });
         setSelectedRoom(null);
         fetchData();
+        return;
+      }
+
+      if (existingThreshold) {
+        // Update existing threshold - use PUT
+        const thresholdRequestData = {
+          room_id: selectedRoom.id.toString(),
+          min_temperature: minTemp.toString(),
+          max_temperature: maxTemp.toString(),
+        };
+        
+        const response = await fetch(`https://tempalert.onensensy.com/api/thresholds/${existingThreshold.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(thresholdRequestData),
+        });
+        
+        const data = await response.json();
+        if (response.ok && data.data) {
+          Alert.alert('Success', 'Threshold updated successfully');
+          setShowThresholdModal(false);
+          setNewThreshold({ min_temperature: '', max_temperature: '' });
+          setSelectedRoom(null);
+          fetchData();
+        } else {
+          Alert.alert('Error', data.message || 'Failed to update threshold');
+        }
       } else {
-        const dummy = await isDummyRoom(selectedRoom.id);
-        if (dummy) {
-          await saveDemoRoomThreshold(selectedRoom.id, { min_temperature: minTemp, max_temperature: maxTemp });
-          Alert.alert('Success', 'Threshold set successfully.');
+        // Create new threshold - use POST
+        const thresholdRequestData = {
+          room_id: selectedRoom.id.toString(),
+          min_temperature: minTemp.toString(),
+          max_temperature: maxTemp.toString(),
+        };
+        
+        const response = await fetch('https://tempalert.onensensy.com/api/thresholds', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(thresholdRequestData),
+        });
+        
+        const data = await response.json();
+        if (response.ok && data.data) {
+          Alert.alert('Success', 'Threshold created successfully');
           setShowThresholdModal(false);
           setNewThreshold({ min_temperature: '', max_temperature: '' });
           setSelectedRoom(null);
@@ -357,17 +402,8 @@ export default function RoomsScreen() {
         }
       }
     } catch (error) {
-      const dummy = await isDummyRoom(selectedRoom.id);
-      if (dummy) {
-        await saveDemoRoomThreshold(selectedRoom.id, { min_temperature: minTemp, max_temperature: maxTemp });
-        Alert.alert('Success', 'Threshold set successfully.');
-        setShowThresholdModal(false);
-        setNewThreshold({ min_temperature: '', max_temperature: '' });
-        setSelectedRoom(null);
-        fetchData();
-      } else {
-        Alert.alert('Error', 'Failed to create threshold');
-      }
+      console.error('Error handling threshold:', error);
+      Alert.alert('Error', 'Failed to save threshold');
     } finally {
       setThresholdLoading(false);
     }

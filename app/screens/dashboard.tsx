@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from "../../src/context/AuthContext";
 import { useRouter } from "expo-router";
 import {
@@ -23,6 +24,7 @@ import Navbar from "../../src/components/Navbar";
 import { isDummyRoom, getDummyRoomData, getFirstRoomId } from "../../src/utils/dummyDataGenerator";
 import { getDemoRoomThreshold } from '../../src/utils/localThresholds';
 import { fetchAllAlertsWithDummyPersistent, AlertLog } from '../../src/utils/alertsFetcher';
+import { resetRoomConfiguration, initializeRoomConfiguration } from '../../src/utils/roomConfigReset';
 
 interface Storeroom {
   id: number;
@@ -63,6 +65,8 @@ export default function Dashboard() {
     // Fetch rooms and alerts
     const fetchDashboardData = async () => {
       try {
+        console.log('🔄 Fetching dashboard data...');
+        
         // Fetch rooms with thresholds (keep this for storeroom overview)
         const roomsResponse = await fetch('https://tempalert.onensensy.com/api/rooms', {
           headers: {
@@ -72,10 +76,25 @@ export default function Dashboard() {
         });
         const roomsData = await roomsResponse.json();
         const rooms = roomsData.data || [];
+        console.log('📋 Fetched rooms:', rooms.length);
+        
+        // Auto-initialize room configuration if needed
+        if (rooms.length > 0) {
+          const config = await AsyncStorage.getItem('roomConfiguration');
+          if (!config) {
+            console.log('🏗️ Auto-initializing room configuration...');
+            await initializeRoomConfiguration(rooms);
+          }
+        }
+        
         const firstRoomId = await getFirstRoomId();
+        console.log('🏠 First room ID:', firstRoomId);
+        
         const roomsWithThresholds = await Promise.all(
           rooms.map(async (room: any) => {
             try {
+              console.log(`🔍 Processing room ${room.id}: ${room.name}`);
+              
               const thresholdResponse = await fetch(`https://tempalert.onensensy.com/api/thresholds?options[room_id]=${room.id}`, {
                 headers: {
                   'Accept': 'application/json',
@@ -83,16 +102,23 @@ export default function Dashboard() {
                 },
               });
               let threshold = (await thresholdResponse.json()).data?.[0] || null;
+              console.log(`📊 Room ${room.id} threshold:`, threshold);
+              
               const isDummy = await isDummyRoom(room.id);
+              console.log(`🎲 Room ${room.id} is dummy:`, isDummy);
+              
               let currentTemperature = null;
               let lastReadingTime = null;
+              
               if (isDummy) {
                 const dummyData = await getDummyRoomData(room.id, room.name);
+                console.log(`🌡️ Room ${room.id} dummy data:`, dummyData);
                 currentTemperature = dummyData.currentTemperature;
                 lastReadingTime = dummyData.lastUpdated;
                 const localThreshold = await getDemoRoomThreshold(room.id);
                 if (localThreshold) {
                   threshold = localThreshold;
+                  console.log(`🎯 Room ${room.id} local threshold:`, localThreshold);
                 }
               } else if (threshold && room.id === firstRoomId) {
                 try {
@@ -104,6 +130,8 @@ export default function Dashboard() {
                   });
                   const sensorsData = await sensorsResponse.json();
                   const sensors = sensorsData.data || [];
+                  console.log(`📡 Room ${room.id} sensors:`, sensors.length);
+                  
                   if (sensors.length > 0) {
                     const latestReadings = await Promise.all(
                       sensors.map(async (sensor: any) => {
@@ -123,19 +151,23 @@ export default function Dashboard() {
                       })
                     );
                     const allReadings = latestReadings.flat();
+                    console.log(`📈 Room ${room.id} total readings:`, allReadings.length);
+                    
                     if (allReadings.length > 0) {
                       const latestReading = allReadings.sort((a: any, b: any) => 
                         new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
                       )[0];
                       currentTemperature = latestReading.temperature_value;
                       lastReadingTime = latestReading.recorded_at;
+                      console.log(`🌡️ Room ${room.id} real temperature:`, currentTemperature);
                     }
                   }
                 } catch (error) {
                   console.error('Error fetching temperature readings for room:', room.id, error);
                 }
               }
-              return {
+              
+              const roomData = {
                 ...room,
                 threshold: threshold ? {
                   min_temperature: threshold.min_temperature,
@@ -145,15 +177,32 @@ export default function Dashboard() {
                 last_reading_time: lastReadingTime,
                 is_dummy: isDummy,
               };
+              
+              console.log(`✅ Room ${room.id} final data:`, {
+                name: roomData.name,
+                temperature: roomData.current_temperature,
+                threshold: roomData.threshold,
+                isDummy: roomData.is_dummy,
+                hasTemp: !!roomData.current_temperature,
+                hasThreshold: !!roomData.threshold,
+                tempType: typeof roomData.current_temperature,
+                thresholdType: typeof roomData.threshold
+              });
+              
+              return roomData;
             } catch (error) {
               console.error('Error fetching threshold for room:', room.id, error);
               return room;
             }
           })
         );
+        
+        console.log('📊 Final rooms data:', roomsWithThresholds);
         setStorerooms(roomsWithThresholds);
+        
         // Fetch alerts (real + dummy)
         const allAlerts = await fetchAllAlertsWithDummyPersistent(token);
+        console.log('🚨 Fetched alerts:', allAlerts.length);
         setAlerts(allAlerts);
         setLoading(false);
       } catch (error) {
@@ -165,57 +214,156 @@ export default function Dashboard() {
   }, [user, router, refreshKey]);
 
   const getStatusColor = (room: Storeroom) => {
-    if (!room.current_temperature || !room.threshold) {
+    // For real rooms without sensor data, show gray
+    if (!room.is_dummy && (!room.current_temperature || !room.threshold)) {
+      return styles.statusUnknown;
+    }
+    
+    // For dummy rooms without data, show gray
+    if (room.is_dummy && !room.current_temperature) {
       return styles.statusUnknown;
     }
 
-    const temp = room.current_temperature;
-    const min = room.threshold.min_temperature;
-    const max = room.threshold.max_temperature;
-
-    if (temp < min) {
-      return styles.statusLow;
-    } else if (temp > max) {
-      return styles.statusHigh;
-    } else {
-      return styles.statusNormal;
+    // For dummy rooms with temperature but no threshold, use default thresholds
+    if (room.is_dummy && room.current_temperature && !room.threshold) {
+      const temp = room.current_temperature;
+      const defaultMin = 18;
+      const defaultMax = 25;
+      
+      if (temp < defaultMin) {
+        return styles.statusLow;
+      } else if (temp > defaultMax) {
+        return styles.statusHigh;
+      } else {
+        return styles.statusNormal;
+      }
     }
+
+    // For rooms with both temperature and threshold
+    if (room.current_temperature && room.threshold) {
+      const temp = room.current_temperature;
+      const min = room.threshold.min_temperature;
+      const max = room.threshold.max_temperature;
+
+      if (temp < min) {
+        return styles.statusLow;
+      } else if (temp > max) {
+        return styles.statusHigh;
+      } else {
+        return styles.statusNormal;
+      }
+    }
+
+    return styles.statusUnknown;
   };
 
   const getStatusIcon = (room: Storeroom) => {
-    if (!room.current_temperature || !room.threshold) {
+    // For real rooms without sensor data, show sensor icon
+    if (!room.is_dummy && (!room.current_temperature || !room.threshold)) {
+      return <Ionicons name="sensor-outline" size={18} color="#6b7280" />;
+    }
+    
+    // For dummy rooms without data, show help icon
+    if (room.is_dummy && !room.current_temperature) {
       return <Ionicons name="help-circle" size={18} color="#6b7280" />;
     }
 
-    const temp = room.current_temperature;
-    const min = room.threshold.min_temperature;
-    const max = room.threshold.max_temperature;
-
-    if (temp < min) {
-      return <Ionicons name="thermometer-outline" size={18} color="#3b82f6" />;
-    } else if (temp > max) {
-      return <Ionicons name="flame" size={18} color="#ef4444" />;
-    } else {
-      return <Ionicons name="checkmark-circle" size={18} color="#10b981" />;
+    // For dummy rooms with temperature but no threshold, use default thresholds
+    if (room.is_dummy && room.current_temperature && !room.threshold) {
+      const temp = room.current_temperature;
+      const defaultMin = 18;
+      const defaultMax = 25;
+      
+      if (temp < defaultMin) {
+        return <Ionicons name="thermometer-outline" size={18} color="#3b82f6" />;
+      } else if (temp > defaultMax) {
+        return <Ionicons name="flame" size={18} color="#ef4444" />;
+      } else {
+        return <Ionicons name="checkmark-circle" size={18} color="#10b981" />;
+      }
     }
+
+    // For rooms with both temperature and threshold
+    if (room.current_temperature && room.threshold) {
+      const temp = room.current_temperature;
+      const min = room.threshold.min_temperature;
+      const max = room.threshold.max_temperature;
+
+      if (temp < min) {
+        return <Ionicons name="thermometer-outline" size={18} color="#3b82f6" />;
+      } else if (temp > max) {
+        return <Ionicons name="flame" size={18} color="#ef4444" />;
+      } else {
+        return <Ionicons name="checkmark-circle" size={18} color="#10b981" />;
+      }
+    }
+
+    return <Ionicons name="help-circle" size={18} color="#6b7280" />;
   };
 
   const getStatusText = (room: Storeroom) => {
-    if (!room.current_temperature || !room.threshold) {
-      return "Unknown";
+    console.log(`🔍 Status check for room ${room.id} (${room.name}):`, {
+      isDummy: room.is_dummy,
+      temperature: room.current_temperature,
+      threshold: room.threshold,
+      hasTemp: !!room.current_temperature,
+      hasThreshold: !!room.threshold
+    });
+
+    // For real rooms without sensor data, show "No Sensor"
+    if (!room.is_dummy && (!room.current_temperature || !room.threshold)) {
+      console.log(`📡 Room ${room.id}: No Sensor`);
+      return "No Sensor";
+    }
+    
+    // For dummy rooms without data, show "No Data"
+    if (room.is_dummy && !room.current_temperature) {
+      console.log(`❓ Room ${room.id}: No Data`);
+      return "No Data";
     }
 
-    const temp = room.current_temperature;
-    const min = room.threshold.min_temperature;
-    const max = room.threshold.max_temperature;
-
-    if (temp < min) {
-      return "Low";
-    } else if (temp > max) {
-      return "High";
-    } else {
-      return "Normal";
+    // For dummy rooms with temperature but no threshold, use default thresholds
+    if (room.is_dummy && room.current_temperature && !room.threshold) {
+      const temp = room.current_temperature;
+      const defaultMin = 18; // Default minimum temperature
+      const defaultMax = 25; // Default maximum temperature
+      
+      console.log(`🎲 Room ${room.id}: Using default thresholds (${defaultMin}-${defaultMax}°C), temp: ${temp}°C`);
+      
+      if (temp < defaultMin) {
+        console.log(`❄️ Room ${room.id}: Low (${temp}°C < ${defaultMin}°C)`);
+        return "Low";
+      } else if (temp > defaultMax) {
+        console.log(`🔥 Room ${room.id}: High (${temp}°C > ${defaultMax}°C)`);
+        return "High";
+      } else {
+        console.log(`✅ Room ${room.id}: Normal (${defaultMin}°C ≤ ${temp}°C ≤ ${defaultMax}°C)`);
+        return "Normal";
+      }
     }
+
+    // For rooms with both temperature and threshold
+    if (room.current_temperature && room.threshold) {
+      const temp = room.current_temperature;
+      const min = room.threshold.min_temperature;
+      const max = room.threshold.max_temperature;
+
+      console.log(`📊 Room ${room.id}: Using actual thresholds (${min}-${max}°C), temp: ${temp}°C`);
+
+      if (temp < min) {
+        console.log(`❄️ Room ${room.id}: Low (${temp}°C < ${min}°C)`);
+        return "Low";
+      } else if (temp > max) {
+        console.log(`🔥 Room ${room.id}: High (${temp}°C > ${max}°C)`);
+        return "High";
+      } else {
+        console.log(`✅ Room ${room.id}: Normal (${min}°C ≤ ${temp}°C ≤ ${max}°C)`);
+        return "Normal";
+      }
+    }
+
+    console.log(`❓ Room ${room.id}: Unknown status`);
+    return "Unknown";
   };
 
   const timeAgo = (timestamp: string) => {
@@ -297,8 +445,22 @@ export default function Dashboard() {
   }, [storerooms]);
 
   const handleRefresh = () => {
-    setLoading(true);
-    setRefreshKey((prevKey) => prevKey + 1);
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: logout
+        }
+      ]
+    );
   };
 
   // Add getAlertSeverity for dashboard alerts
@@ -360,21 +522,16 @@ export default function Dashboard() {
       <View style={styles.header}>
         <View>
           <Text style={styles.welcomeText}>Welcome back</Text>
-          <Text style={styles.greeting}>
-            {user.name || user.displayName || "User"} {'\u{1F44B}'}
-          </Text>
+          <Text style={styles.greeting}>{user?.name || "User"}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={() => {
-            Alert.alert("Logout", "Are you sure you want to logout?", [
-              { text: "Cancel", style: "cancel" },
-              { text: "Logout", onPress: logout },
-            ]);
-          }}
-        >
-          <MaterialIcons name="logout" size={22} color="#64748b" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#64748b" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -457,10 +614,24 @@ export default function Dashboard() {
                     <View style={styles.storeroomHeader}>
                       <Text style={styles.storeroomName}>{room.name}</Text>
                       <View style={styles.statusContainer}>
-                        {getStatusIcon(room)}
-                        <Text style={[styles.statusText, getStatusColor(room)]}>
-                          {getStatusText(room)}
-                        </Text>
+                        {(() => {
+                          const statusText = getStatusText(room);
+                          const statusIcon = getStatusIcon(room);
+                          const statusColor = getStatusColor(room);
+                          console.log(`🎨 Rendering status for room ${room.id}:`, {
+                            text: statusText,
+                            color: statusColor,
+                            hasIcon: !!statusIcon
+                          });
+                          return (
+                            <>
+                              {statusIcon}
+                              <Text style={[styles.statusText, statusColor]}>
+                                {statusText}
+                              </Text>
+                            </>
+                          );
+                        })()}
                       </View>
                     </View>
                     
@@ -468,7 +639,9 @@ export default function Dashboard() {
                       <Text style={styles.temperatureText}>
                         {room.current_temperature !== null && room.current_temperature !== undefined
                           ? `${room.current_temperature}°C`
-                          : "No data"}
+                          : room.is_dummy 
+                            ? "22.0°C" // Default dummy temperature
+                            : "No Sensor"} {/* Real room without sensor */}
                       </Text>
                       <Text style={styles.lastUpdatedText}>
                         Updated {room.last_reading_time ? timeAgo(room.last_reading_time) : "Unknown time"}
@@ -484,6 +657,12 @@ export default function Dashboard() {
                     {room.is_dummy && (
                       <View style={styles.dummyBadge}>
                         <Text style={styles.dummyBadgeText}>Demo Data</Text>
+                      </View>
+                    )}
+
+                    {!room.is_dummy && (
+                      <View style={styles.realBadge}>
+                        <Text style={styles.realBadgeText}>Real Sensor</Text>
                       </View>
                     )}
                   </View>
@@ -768,6 +947,18 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   dummyBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#10b981",
+  },
+  realBadge: {
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    borderRadius: 4,
+    padding: 4,
+    alignSelf: "flex-start",
+    marginTop: 4,
+  },
+  realBadgeText: {
     fontSize: 12,
     fontWeight: "600",
     color: "#10b981",

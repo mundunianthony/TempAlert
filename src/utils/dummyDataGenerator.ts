@@ -108,6 +108,16 @@ export const getDummyRoomData = async (roomId: number, roomName: string): Promis
             };
 
             await AsyncStorage.setItem(storageKey, JSON.stringify(newData));
+
+            // Also create default threshold for this dummy room
+            try {
+                const { saveDemoRoomThreshold } = await import('./localThresholds');
+                await saveDemoRoomThreshold(roomId, { min_temperature: 18, max_temperature: 25 });
+                console.log(`🎯 Created default threshold for dummy room ${roomId}`);
+            } catch (thresholdError) {
+                console.log(`⚠️ Could not create default threshold for room ${roomId}:`, thresholdError);
+            }
+
             return newData;
         }
     } catch (error) {
@@ -125,7 +135,15 @@ export const getDummyRoomData = async (roomId: number, roomName: string): Promis
 export const getRoomConfiguration = async () => {
     try {
         const config = await AsyncStorage.getItem('roomConfiguration');
-        return config ? JSON.parse(config) : { firstRoomId: null, roomOrder: [], roomTypes: {} };
+        if (config) {
+            return JSON.parse(config);
+        }
+
+        // If no configuration exists, create a default one
+        console.log('⚠️ No room configuration found, creating default...');
+        const defaultConfig = { firstRoomId: null, roomOrder: [], roomTypes: {} };
+        await AsyncStorage.setItem('roomConfiguration', JSON.stringify(defaultConfig));
+        return defaultConfig;
     } catch (error) {
         console.error('Error getting room configuration:', error);
         return { firstRoomId: null, roomOrder: [], roomTypes: {} };
@@ -134,14 +152,47 @@ export const getRoomConfiguration = async () => {
 
 // Check if a room is dummy
 export const isDummyRoom = async (roomId: number): Promise<boolean> => {
-    const config = await getRoomConfiguration();
-    return config.roomTypes[roomId] === 'dummy';
+    try {
+        const config = await getRoomConfiguration();
+        const isDummy = config.roomTypes[roomId] === 'dummy';
+        console.log(`🎲 Room ${roomId} dummy check:`, isDummy, 'Config:', config.roomTypes[roomId]);
+
+        // If room type is not defined, treat it as dummy (except the first room)
+        if (config.roomTypes[roomId] === undefined) {
+            if (config.firstRoomId === null) {
+                // First room should be real
+                config.firstRoomId = roomId;
+                config.roomTypes[roomId] = 'real';
+                await AsyncStorage.setItem('roomConfiguration', JSON.stringify(config));
+                console.log(`🏠 Auto-assigned room ${roomId} as first real room`);
+                return false;
+            } else {
+                // Other rooms should be dummy
+                config.roomTypes[roomId] = 'dummy';
+                await AsyncStorage.setItem('roomConfiguration', JSON.stringify(config));
+                console.log(`🎲 Auto-assigned room ${roomId} as dummy room`);
+                return true;
+            }
+        }
+
+        return isDummy;
+    } catch (error) {
+        console.error('Error checking if room is dummy:', error);
+        // Fallback: treat as dummy room
+        return true;
+    }
 };
 
 // Get the first room ID (real sensor room)
 export const getFirstRoomId = async (): Promise<number | null> => {
-    const config = await getRoomConfiguration();
-    return config.firstRoomId;
+    try {
+        const config = await getRoomConfiguration();
+        console.log('🏠 First room ID from config:', config.firstRoomId);
+        return config.firstRoomId;
+    } catch (error) {
+        console.error('Error getting first room ID:', error);
+        return null;
+    }
 };
 
 // Utility: Get human-readable relative time from a timestamp
