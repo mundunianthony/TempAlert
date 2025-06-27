@@ -55,7 +55,7 @@ export default function Login() {
     ]).start();
   }, []);
 
-  // Animate error message when it appears
+  // Animate error message when it appears.
   useEffect(() => {
     if (error) {
       // Reset shake animation
