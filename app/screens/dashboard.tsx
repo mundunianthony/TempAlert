@@ -433,17 +433,16 @@ export default function Dashboard() {
     return Math.round(avgTemp);
   }, [storerooms]);
 
-  // Calculate the number of rooms with at least one active (unresolved) alert
+  // Calculate the number of rooms currently in an alert state (live temperature vs. threshold)
   const activeAlertCount = useMemo(() => {
-    const roomIdsWithActiveAlerts = new Set();
-    alerts.forEach(alert => {
-      const status = String(alert.status).toLowerCase();
-      if ((status === 'triggered' || status === 'active') && !alert.resolved_at) {
-        roomIdsWithActiveAlerts.add(String(alert.room_id));
-      }
-    });
-    return roomIdsWithActiveAlerts.size;
-  }, [alerts]);
+    return storerooms.filter(room => {
+      if (!room.current_temperature || !room.threshold) return false;
+      const temp = room.current_temperature;
+      const min = room.threshold.min_temperature;
+      const max = room.threshold.max_temperature;
+      return temp < min || temp > max;
+    }).length;
+  }, [storerooms]);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);

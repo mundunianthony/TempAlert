@@ -264,7 +264,6 @@ export default function Alerts() {
                           <Text style={[styles.alertSeverity, { color: severity.color }]}>
                             {severity.label}
                           </Text>
-                          <Text style={styles.alertTime}>{timeAgo(alert.triggered_at)}</Text>
                         </View>
                         <Text style={styles.alertStoreroom}>
                           {alert.room?.name || `Room ${alert.room_id}`}
