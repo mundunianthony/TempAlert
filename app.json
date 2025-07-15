@@ -41,6 +41,9 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "ff7563d9-3227-4457-9b93-6217b6b1fd2f"
       }
     },
     "owner": "amanya123"
