@@ -260,7 +260,7 @@ export default function Dashboard() {
   const getStatusIcon = (room: Storeroom) => {
     // For real rooms without sensor data, show sensor icon
     if (!room.is_dummy && (!room.current_temperature || !room.threshold)) {
-      return <Ionicons name="sensor-outline" size={18} color="#6b7280" />;
+      return <Ionicons name="help-circle-outline" size={18} color="#6b7280" />;
     }
     
     // For dummy rooms without data, show help icon
@@ -433,16 +433,17 @@ export default function Dashboard() {
     return Math.round(avgTemp);
   }, [storerooms]);
 
-  // Calculate the number of rooms currently in an alert state
+  // Calculate the number of rooms with at least one active (unresolved) alert
   const activeAlertCount = useMemo(() => {
-    return storerooms.filter(room => {
-      if (!room.current_temperature || !room.threshold) return false;
-      const temp = room.current_temperature;
-      const min = room.threshold.min_temperature;
-      const max = room.threshold.max_temperature;
-      return temp < min || temp > max;
-    }).length;
-  }, [storerooms]);
+    const roomIdsWithActiveAlerts = new Set();
+    alerts.forEach(alert => {
+      const status = String(alert.status).toLowerCase();
+      if ((status === 'triggered' || status === 'active') && !alert.resolved_at) {
+        roomIdsWithActiveAlerts.add(String(alert.room_id));
+      }
+    });
+    return roomIdsWithActiveAlerts.size;
+  }, [alerts]);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);

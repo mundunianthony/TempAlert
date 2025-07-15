@@ -40,7 +40,7 @@ type FilterPeriod = '24h' | '7d' | '30d' | 'custom';
 
 export default function StoreroomDetails() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { storeroomId, storeroomName } = useLocalSearchParams<{
     storeroomId: string;
     storeroomName: string;
@@ -67,13 +67,16 @@ export default function StoreroomDetails() {
     try {
       setLoading(true);
       // Use persistent alerts (all alerts, including previous days)
-      const allAlerts: AlertLog[] = await fetchAllAlertsWithDummyPersistent(user.token || '');
-      // Filter for this storeroom
-      const roomAlerts = allAlerts.filter(alert => String(alert.room_id) === String(storeroomId));
+      const allAlerts: AlertLog[] = await fetchAllAlertsWithDummyPersistent(token || '', () => {
+        // Redirect to login if unauthenticated
+        router.replace('/login');
+      });
+      // Filter for this storeroom (handle both string and number room_id)
+      const roomAlerts = allAlerts.filter(alert => alert.room_id == storeroomId);
       // Sort by triggered_at (most recent first)
       const sortedAlerts = roomAlerts.sort((a: AlertLog, b: AlertLog) => 
         new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime()
-      );
+      ).slice(0, 100); // Limit to most recent 100 alerts
       setAlerts(sortedAlerts);
       setLoading(false);
     } catch (error) {

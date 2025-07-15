@@ -24,7 +24,7 @@ interface Room {
 }
 
 export default function Alerts() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, token } = useAuth();
   const router = useRouter();
   const [alertLogs, setAlertLogs] = useState<AlertLog[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -44,7 +44,10 @@ export default function Alerts() {
 
   const fetchAlertsData = async (forceRefresh = false) => {
     try {
-      const allAlerts = await fetchAllAlertsWithDummyPersistent(user.token || '');
+      const allAlerts = await fetchAllAlertsWithDummyPersistent(token || '', () => {
+        // Redirect to login if unauthenticated
+        router.replace('/login');
+      });
       setAlertLogs(allAlerts);
       setLoading(false);
       setRefreshing(false);
@@ -138,7 +141,7 @@ export default function Alerts() {
         return b.severity.priority - a.severity.priority;
       }
       return new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime();
-    });
+    }).slice(0, 100); // Limit to most recent 100 alerts
   }, [alertLogs]);
 
   const timeAgo = (timestamp: string) => {

@@ -34,7 +34,7 @@ const ALERTS_RETENTION_DAYS = 30;
  * @param userToken The user's auth token
  * @returns Array of AlertLog objects (real and synthetic)
  */
-export async function fetchAllAlertsWithDummy(userToken: string): Promise<AlertLog[]> {
+export async function fetchAllAlertsWithDummy(userToken: string, onUnauthenticated?: () => void): Promise<AlertLog[]> {
     // Fetch all rooms
     const roomsResponse = await fetch('https://tempalert.onensensy.com/api/rooms', {
         headers: {
@@ -43,6 +43,11 @@ export async function fetchAllAlertsWithDummy(userToken: string): Promise<AlertL
         },
     });
     const roomsData = await roomsResponse.json();
+    if (roomsData.message === 'Unauthenticated.') {
+        console.error('User is unauthenticated (rooms). Redirecting to login.');
+        if (onUnauthenticated) onUnauthenticated();
+        return [];
+    }
     const rooms: Room[] = roomsData.data || [];
 
     // Fetch all alert logs
@@ -53,6 +58,11 @@ export async function fetchAllAlertsWithDummy(userToken: string): Promise<AlertL
         },
     });
     const alertsData = await alertsResponse.json();
+    if (alertsData.message === 'Unauthenticated.') {
+        console.error('User is unauthenticated (alerts). Redirecting to login.');
+        if (onUnauthenticated) onUnauthenticated();
+        return [];
+    }
     const alertsList: AlertLog[] = alertsData.data || [];
 
     // Combine alert logs with room information
@@ -142,9 +152,9 @@ function mergeAlerts(existing: AlertLog[], incoming: AlertLog[]): AlertLog[] {
     return Array.from(map.values());
 }
 
-export async function fetchAllAlertsWithDummyPersistent(userToken: string): Promise<AlertLog[]> {
+export async function fetchAllAlertsWithDummyPersistent(userToken: string, onUnauthenticated?: () => void): Promise<AlertLog[]> {
     // Fetch new alerts (real + dummy)
-    const freshAlerts = await fetchAllAlertsWithDummy(userToken);
+    const freshAlerts = await fetchAllAlertsWithDummy(userToken, onUnauthenticated);
     // Load persistent log
     let persistentAlerts: AlertLog[] = [];
     try {
@@ -161,5 +171,6 @@ export async function fetchAllAlertsWithDummyPersistent(userToken: string): Prom
         await AsyncStorage.setItem(ALERTS_PERSISTENT_LOG_KEY, JSON.stringify(merged));
     } catch { }
     // Return sorted by triggered_at
-    return merged.sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime());
+    const result = merged.sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime());
+    return result;
 } 
